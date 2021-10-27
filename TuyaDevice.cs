@@ -198,7 +198,7 @@ namespace com.clusterrr.TuyaNet
                 { "t", (DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds.ToString("0") }
             };
             string requestJson = JsonSerializer.Serialize(cmd);
-            var response = await SendAsync(TuyaCommand.CONTROL, requestJson, tries: 2, nullRetries: 1);
+            var response = await SendAsync(TuyaCommand.DP_QUERY, requestJson, tries: 2, nullRetries: 1);
             if (string.IsNullOrEmpty(response.JSON))
                 throw new InvalidDataException("Response is empty");
             var responseJson = JsonDocument.Parse(response.JSON);
