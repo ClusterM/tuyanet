@@ -3,6 +3,9 @@ using System.Text.Json.Serialization;
 
 namespace com.clusterrr.TuyaNet
 {
+    /// <summary>
+    /// Device info received from local network.
+    /// </summary>
     public class TuyaDeviceScanInfo : IEquatable<TuyaDeviceScanInfo>
     {
         [JsonPropertyName("ip")]

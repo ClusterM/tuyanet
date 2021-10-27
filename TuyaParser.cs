@@ -4,10 +4,12 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace com.clusterrr.TuyaNet
 {
+    /// <summary>
+    /// Class to encode and decode data sent over local network.
+    /// </summary>
     internal static class TuyaParser
     {
         private static byte[] PROTOCOL_VERSION_BYTES_31 = Encoding.ASCII.GetBytes("3.1");

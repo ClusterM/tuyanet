@@ -3,6 +3,9 @@ using System.Text.Json.Serialization;
 
 namespace com.clusterrr.TuyaNet
 {
+    /// <summary>
+    /// Device info received from Tuya API.
+    /// </summary>
     public class TuyaDeviceApiInfo
     {
         [JsonPropertyName("active_time")]

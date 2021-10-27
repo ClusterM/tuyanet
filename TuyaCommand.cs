@@ -1,5 +1,8 @@
 ﻿namespace com.clusterrr.TuyaNet
 {
+    /// <summary>
+    /// Tuya command type
+    /// </summary>
     public enum TuyaCommand
     {
         UDP = 0,

@@ -1,16 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace com.clusterrr.TuyaNet
 {
+    /// <summary>
+    /// Scanner to discover devices over local network.
+    /// </summary>
     public class TuyaScanner
     {
         private const ushort UDP_PORT31 = 6666;      // Tuya 3.1 UDP Port
@@ -24,9 +25,23 @@ namespace com.clusterrr.TuyaNet
         private Thread udpListener33 = null;
         private List<TuyaDeviceScanInfo> devices = new List<TuyaDeviceScanInfo>();
 
+        /// <summary>
+        /// Even that will be called on every broadcast message from devices.
+        /// </summary>
         public event EventHandler<TuyaDeviceScanInfo> OnDeviceInfoReceived;
+        /// <summary>
+        /// Even that will be called only once for every device.
+        /// </summary>
         public event EventHandler<TuyaDeviceScanInfo> OnNewDeviceInfoReceived;
 
+        /// <summary>
+        /// Creates a new instance of the TuyaScanner class.
+        /// </summary>
+        public TuyaScanner() { }
+
+        /// <summary>
+        /// Starts scanner.
+        /// </summary>
         public void Start()
         {
             Stop();
@@ -40,6 +55,9 @@ namespace com.clusterrr.TuyaNet
             udpListener33.Start(udpServer33);
         }
 
+        /// <summary>
+        /// Stops scanner.
+        /// </summary>
         public void Stop()
         {
             running = false;

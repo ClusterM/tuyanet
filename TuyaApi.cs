@@ -11,16 +11,19 @@ using System.Threading.Tasks;
 
 namespace com.clusterrr.TuyaNet
 {
+    /// <summary>
+    /// Provides access to Tuya Web API.
+    /// </summary>
     public class TuyaApi
     {
         private readonly Region region;
-        private readonly string apiKey;
+        private readonly string accessId;
         private readonly string apiSecret;
         private readonly HttpClient httpClient;
         private TuyaToken token = null;
         private DateTime tokenTime = new DateTime();
 
-        public class TuyaToken
+        private class TuyaToken
         {
             [JsonPropertyName("access_token")]
             public string AccessToken { get; set; }
@@ -35,14 +38,23 @@ namespace com.clusterrr.TuyaNet
             public string Uid { get; set; }
         }
 
-        public TuyaApi(Region region, string apiKey, string apiSecret)
+        /// <summary>
+        /// Creates a new instance of the TuyaApi class.
+        /// </summary>
+        /// <param name="region">Region of server.</param>
+        /// <param name="accessId">Access ID/Client ID from https://iot.tuya.com/ .</param>
+        /// <param name="apiSecret">API secret from https://iot.tuya.com/ .</param>
+        public TuyaApi(Region region, string accessId, string apiSecret)
         {
             this.region = region;
-            this.apiKey = apiKey;
+            this.accessId = accessId;
             this.apiSecret = apiSecret;
             httpClient = new HttpClient();
         }
 
+        /// <summary>
+        /// Region of server.
+        /// </summary>
         public enum Region
         {
             China,
@@ -80,6 +92,14 @@ namespace com.clusterrr.TuyaNet
             return urlHost;
         }
 
+        /// <summary>
+        /// Low-level request to API.
+        /// </summary>
+        /// <param name="uri">Method URI.</param>
+        /// <param name="body">Body of request if any.</param>
+        /// <param name="headers">Additional headers.</param>
+        /// <param name="noToken">Execute query without token.</param>
+        /// <returns>JSON string with response.</returns>
         public async Task<string> RequestAsync(string uri, string body = null, Dictionary<string, string> headers = null, bool noToken = false)
         {
             var urlHost = RegionToHost(region);
@@ -99,13 +119,13 @@ namespace com.clusterrr.TuyaNet
             string payload;
             if (noToken)
             {
-                payload = apiKey + now;
+                payload = accessId + now;
                 headers["secret"] = apiSecret;
             }
             else
             {
-                await RefreshAccessToken();
-                payload = apiKey + token.AccessToken + now;
+                await RefreshAccessTokenAsync();
+                payload = accessId + token.AccessToken + now;
             }
 
             using (var sha256 = SHA256.Create())
@@ -122,7 +142,7 @@ namespace com.clusterrr.TuyaNet
                 signature = string.Concat(hmac.ComputeHash(Encoding.UTF8.GetBytes(payload)).Select(b => $"{b:X2}"));
             }
 
-            headers["client_id"] = apiKey;
+            headers["client_id"] = accessId;
             headers["sign"] = signature;
             headers["t"] = now;
             headers["sign_method"] = "HMAC-SHA256";
@@ -148,6 +168,10 @@ namespace com.clusterrr.TuyaNet
             }
         }
 
+        /// <summary>
+        /// Requests access token.
+        /// </summary>
+        /// <returns>Access token.</returns>
         private async Task<TuyaToken> GetAccessTokenAsync()
         {
             var uri = "token?grant_type=1";
@@ -156,7 +180,10 @@ namespace com.clusterrr.TuyaNet
             return token;
         }
 
-        private async Task RefreshAccessToken()
+        /// <summary>
+        /// Refreshes access token if it's expired or not requested yet.
+        /// </summary>
+        private async Task RefreshAccessTokenAsync()
         {
             if ((token == null) || tokenTime.AddSeconds(token.ExpireTime) >= DateTime.Now)
             {
@@ -165,6 +192,11 @@ namespace com.clusterrr.TuyaNet
             }
         }
 
+        /// <summary>
+        /// Requests info about device by it's ID.
+        /// </summary>
+        /// <param name="deviceId">Device ID.</param>
+        /// <returns>Device info.</returns>
         public async Task<TuyaDeviceApiInfo> GetDeviceInfoAsync(string deviceId)
         {
             var uri = $"devices/{deviceId}";
@@ -173,6 +205,11 @@ namespace com.clusterrr.TuyaNet
             return device;
         }
 
+        /// <summary>
+        /// Requests info about all registered devices, requires ID of any registered device.
+        /// </summary>
+        /// <param name="anyDeviceId">ID of any registered device.</param>
+        /// <returns>Array of devices info.</returns>
         public async Task<TuyaDeviceApiInfo[]> GetAllDevicesInfoAsync(string anyDeviceId)
         {
             var userId = (await GetDeviceInfoAsync(anyDeviceId)).UserId;
