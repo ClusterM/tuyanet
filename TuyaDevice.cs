@@ -32,12 +32,12 @@ namespace com.clusterrr.TuyaNet
 
         public byte[] CreatePayload(TuyaCommand command, string json)
             => TuyaParser.CreatePayload(command, json, Encoding.UTF8.GetBytes(LocalKey), ProtocolVersion);
-        public TuyaResponse DecodeResponse(byte[] data)
+        public TuyaLocalResponse DecodeResponse(byte[] data)
             => TuyaParser.DecodeResponse(data, Encoding.UTF8.GetBytes(LocalKey), ProtocolVersion);     
-        public async Task<TuyaResponse> Send(TuyaCommand command, string json, int tries = 2, int nullRetries = 1)
-            => DecodeResponse(await Send(CreatePayload(command, json), tries, nullRetries));
+        public async Task<TuyaLocalResponse> Send(TuyaCommand command, string json, int tries = 2, int nullRetries = 1)
+            => DecodeResponse(await SendAsync(CreatePayload(command, json), tries, nullRetries));
 
-        public async Task<byte[]> Send(byte[] data, int tries = 2, int nullRetries = 1)
+        public async Task<byte[]> SendAsync(byte[] data, int tries = 2, int nullRetries = 1)
         {
             Exception lastException = null;
             while (tries-- > 0)

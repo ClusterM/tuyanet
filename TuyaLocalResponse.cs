@@ -6,13 +6,13 @@ using System.Threading.Tasks;
 
 namespace com.clusterrr.TuyaNet
 {
-    public class TuyaResponse
+    public class TuyaLocalResponse
     {
         public TuyaCommand Command { get; }
         public int ReturnCode { get; }
         public string JSON { get; }
 
-        internal TuyaResponse(TuyaCommand command, int returnCode, string json)
+        internal TuyaLocalResponse(TuyaCommand command, int returnCode, string json)
         {
             Command = command;
             ReturnCode = returnCode;

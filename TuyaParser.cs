@@ -116,7 +116,7 @@ namespace com.clusterrr.TuyaNet
             return payload;
         }
 
-        internal static TuyaResponse DecodeResponse(byte[] data, byte[] key, TuyaProtocolVersion protocolVersion = TuyaProtocolVersion.V33)
+        internal static TuyaLocalResponse DecodeResponse(byte[] data, byte[] key, TuyaProtocolVersion protocolVersion = TuyaProtocolVersion.V33)
         {
             // Check length and prefix
             if (data.Length < 20 || !data.Take(PREFIX.Length).SequenceEqual(PREFIX))
@@ -164,12 +164,12 @@ namespace com.clusterrr.TuyaNet
             }
 
             if (data.Length == 0)
-                return new TuyaResponse(command, returnCode, null);
+                return new TuyaLocalResponse(command, returnCode, null);
 
             var json = Encoding.UTF8.GetString(data);
             if (!json.StartsWith("{") || !json.EndsWith("}"))
                 throw new InvalidDataException($"Response is not JSON: {json}");
-            return new TuyaResponse(command, returnCode, json);
+            return new TuyaLocalResponse(command, returnCode, json);
         }
     }
 }

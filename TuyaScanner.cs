@@ -22,10 +22,10 @@ namespace com.clusterrr.TuyaNet
         private UdpClient udpServer33 = null;
         private Thread udpListener31 = null;
         private Thread udpListener33 = null;
-        private List<TuyaDeviceInfo> devices = new List<TuyaDeviceInfo>();
+        private List<TuyaDeviceScanInfo> devices = new List<TuyaDeviceScanInfo>();
 
-        public event EventHandler<TuyaDeviceInfo> OnDeviceInfoReceived;
-        public event EventHandler<TuyaDeviceInfo> OnNewDeviceInfoReceived;
+        public event EventHandler<TuyaDeviceScanInfo> OnDeviceInfoReceived;
+        public event EventHandler<TuyaDeviceScanInfo> OnNewDeviceInfoReceived;
 
         public void Start()
         {
@@ -111,7 +111,7 @@ namespace com.clusterrr.TuyaNet
 
         private void Parse(string json)
         {
-            var deviceInfo = JsonSerializer.Deserialize<TuyaDeviceInfo>(json);
+            var deviceInfo = JsonSerializer.Deserialize<TuyaDeviceScanInfo>(json);
             OnDeviceInfoReceived?.Invoke(this, deviceInfo);
             if ((OnNewDeviceInfoReceived) != null && !devices.Contains(deviceInfo))
             {

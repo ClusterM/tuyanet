@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace com.clusterrr.TuyaNet
 {
-    public class TuyaDeviceInfo : IEquatable<TuyaDeviceInfo>
+    public class TuyaDeviceScanInfo : IEquatable<TuyaDeviceScanInfo>
     {
         [JsonPropertyName("ip")]
         public string IP { get; set; } = null;
@@ -29,9 +29,7 @@ namespace com.clusterrr.TuyaNet
         [JsonPropertyName("version")]
         public string Version { get; set; } = null;
 
-        public string LocalKey { get; set; } = null;
-
-        public bool Equals(TuyaDeviceInfo other)
+        public bool Equals(TuyaDeviceScanInfo other)
             => (IP == other.IP) && (GwId == other.GwId);
 
         public override string ToString()
