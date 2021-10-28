@@ -1,10 +1,11 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -76,51 +77,20 @@ namespace com.clusterrr.TuyaNet
         /// <returns>JSON string with added fields.</returns>
         public string FillJson(string json, bool addGwId = true, bool addDevId = true, bool addUid = true, bool addTime = true)
         {
-            JsonElement foo;
-            if (string.IsNullOrWhiteSpace(json)) json = "{}";
-            using (MemoryStream memoryStream = new MemoryStream())
-            {
-                using (Utf8JsonWriter utf8JsonWriter = new Utf8JsonWriter(memoryStream))
-                {
-                    using (JsonDocument jsonDocument = JsonDocument.Parse(json))
-                    {
-                        utf8JsonWriter.WriteStartObject();
-
-                        if (addGwId && !jsonDocument.RootElement.TryGetProperty("gwId", out foo))
-                        {
-                            utf8JsonWriter.WritePropertyName("gwId");
-                            utf8JsonWriter.WriteStringValue(DeviceId);
-                            if (string.IsNullOrWhiteSpace(DeviceId))
-                                throw new ArgumentNullException("deviceId", "Device ID can't be null.");
-                        }
-                        if (addDevId && !jsonDocument.RootElement.TryGetProperty("devId", out foo))
-                        {
-                            utf8JsonWriter.WritePropertyName("devId");
-                            utf8JsonWriter.WriteStringValue(DeviceId);
-                            if (string.IsNullOrWhiteSpace(DeviceId))
-                                throw new ArgumentNullException("deviceId", "Device ID can't be null.");
-                        }
-                        if (addUid && !jsonDocument.RootElement.TryGetProperty("uid", out foo))
-                        {
-                            utf8JsonWriter.WritePropertyName("uid");
-                            utf8JsonWriter.WriteStringValue(DeviceId);
-                            if (string.IsNullOrWhiteSpace(DeviceId))
-                                throw new ArgumentNullException("deviceId", "Device ID can't be null.");
-                        }
-                        if (addTime && !jsonDocument.RootElement.TryGetProperty("t", out foo))
-                        {
-                            utf8JsonWriter.WritePropertyName("t");
-                            utf8JsonWriter.WriteStringValue((DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds.ToString("0"));
-                        }
-                        foreach (var testDataElement in jsonDocument.RootElement.EnumerateObject())
-                        {
-                            testDataElement.WriteTo(utf8JsonWriter);
-                        }
-                        utf8JsonWriter.WriteEndObject();
-                    }
-                }
-                return Encoding.UTF8.GetString(memoryStream.ToArray());
-            }
+            if (string.IsNullOrEmpty(json))
+                json = "{}";
+            var root = JObject.Parse(json);
+            if ((addGwId || addDevId || addUid) && string.IsNullOrWhiteSpace(DeviceId))
+                throw new ArgumentNullException("deviceId", "Device ID can't be null.");
+            if (addTime && !root.ContainsKey("t"))
+                root.AddFirst(new JProperty("t", (DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds.ToString("0")));
+            if (addUid && !root.ContainsKey("uid"))
+                root.AddFirst(new JProperty("uid", DeviceId));
+            if (addDevId && !root.ContainsKey("devId"))
+                root.AddFirst(new JProperty("devId", DeviceId));
+            if (addGwId && !root.ContainsKey("gwId"))
+                root.AddFirst(new JProperty("gwId", DeviceId));
+            return root.ToString();
         }
 
         /// <summary>
@@ -137,7 +107,7 @@ namespace com.clusterrr.TuyaNet
         /// </summary>
         /// <param name="data">Raw data to parse and decrypt.</param>
         /// <returns>Instance of TuyaLocalResponse.</returns>
-        public TuyaLocalResponse DecodeResponse(byte[] data)            
+        public TuyaLocalResponse DecodeResponse(byte[] data)
             => TuyaParser.DecodeResponse(data, Encoding.UTF8.GetBytes(LocalKey), ProtocolVersion);
 
         /// <summary>
@@ -177,7 +147,13 @@ namespace com.clusterrr.TuyaNet
                     await stream.WriteAsync(data, 0, data.Length).ConfigureAwait(false);
                     return await Receive(stream, nullRetries);
                 }
-                catch (Exception ex) when (ex is IOException or TimeoutException)
+                catch (IOException ex)
+                {
+                    // sockets sometimes drop the connection unexpectedly, so let's 
+                    // retry at least once
+                    lastException = ex;
+                }
+                catch (TimeoutException ex)
                 {
                     // sockets sometimes drop the connection unexpectedly, so let's 
                     // retry at least once
@@ -248,9 +224,9 @@ namespace com.clusterrr.TuyaNet
             var response = await SendAsync(TuyaCommand.DP_QUERY, requestJson, retries: 2, nullRetries: 1);
             if (string.IsNullOrEmpty(response.JSON))
                 throw new InvalidDataException("Response is empty");
-            var responseJson = JsonDocument.Parse(response.JSON);
-            var dps = JsonSerializer.Deserialize<Dictionary<string, object>>(responseJson.RootElement.GetProperty("dps").ToString());
-            return new Dictionary<int, object>(dps.Select(kv => new KeyValuePair<int, object>(int.Parse(kv.Key), kv.Value)));
+            var root = JObject.Parse(response.JSON);
+            var dps = JsonConvert.DeserializeObject<Dictionary<string, object>>(root.GetValue("dps").ToString());
+            return dps.ToDictionary(kv => int.Parse(kv.Key), kv => kv.Value);
         }
 
         /// <summary>
@@ -273,14 +249,14 @@ namespace com.clusterrr.TuyaNet
             {
                 { "dps",  dps }
             };
-            string requestJson = JsonSerializer.Serialize(cmd);
+            string requestJson = JsonConvert.SerializeObject(cmd);
             requestJson = FillJson(requestJson);
             var response = await SendAsync(TuyaCommand.CONTROL, requestJson, retries: 2, nullRetries: 1);
             if (string.IsNullOrEmpty(response.JSON))
                 throw new InvalidDataException("Response is empty");
-            var responseJson = JsonDocument.Parse(response.JSON);
-            var newDps = JsonSerializer.Deserialize<Dictionary<string, object>>(responseJson.RootElement.GetProperty("dps").ToString());
-            return new Dictionary<int, object>(newDps.Select(kv => new KeyValuePair<int, object>(int.Parse(kv.Key), kv.Value)));
+            var root = JObject.Parse(response.JSON);
+            var newDps = JsonConvert.DeserializeObject<Dictionary<string, object>>(root.GetValue("dps").ToString());
+            return newDps.ToDictionary(kv => int.Parse(kv.Key), kv => kv.Value);
         }
 
         /// <summary>

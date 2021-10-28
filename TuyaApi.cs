@@ -1,12 +1,12 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace com.clusterrr.TuyaNet
@@ -25,16 +25,16 @@ namespace com.clusterrr.TuyaNet
 
         private class TuyaToken
         {
-            [JsonPropertyName("access_token")]
+            [JsonProperty("access_token")]
             public string AccessToken { get; set; }
 
-            [JsonPropertyName("expire_time")]
+            [JsonProperty("expire_time")]
             public int ExpireTime { get; set; }
 
-            [JsonPropertyName("refresh_token")]
+            [JsonProperty("refresh_token")]
             public string RefreshToken { get; set; }
 
-            [JsonPropertyName("uid")]
+            [JsonProperty("uid")]
             public string Uid { get; set; }
         }
 
@@ -113,7 +113,7 @@ namespace com.clusterrr.TuyaNet
             else
             {
                 headersStr = string.Concat(headers.Select(kv => $"{kv.Key}:{kv.Value}\n"));
-                headers.Add("Signature-Headers", string.Join(':', headers.Keys));
+                headers.Add("Signature-Headers", string.Join(":", headers.Keys));
             }
 
             string payload;
@@ -160,10 +160,10 @@ namespace com.clusterrr.TuyaNet
             using (var response = await httpClient.SendAsync(httpRequestMessage).ConfigureAwait(false))
             {
                 var responseString = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                var root = JsonDocument.Parse(responseString).RootElement;
-                var success = root.GetProperty("success").GetBoolean();
-                if (!success) throw new InvalidDataException(root.GetProperty("msg").GetString());
-                var result = root.GetProperty("result").ToString();
+                var root = JObject.Parse(responseString);
+                var success = root.GetValue("success").Value<bool>();
+                if (!success) throw new InvalidDataException(root.ContainsKey("msg") ? root.GetValue("msg").Value<string>() : null);
+                var result = root.GetValue("result").ToString();
                 return result;
             }
         }
@@ -176,7 +176,7 @@ namespace com.clusterrr.TuyaNet
         {
             var uri = "token?grant_type=1";
             var response = await RequestAsync(uri, noToken: true);
-            var token = JsonSerializer.Deserialize<TuyaToken>(response);
+            var token = JsonConvert.DeserializeObject<TuyaToken>(response);
             return token;
         }
 
@@ -201,7 +201,7 @@ namespace com.clusterrr.TuyaNet
         {
             var uri = $"devices/{deviceId}";
             var response = await RequestAsync(uri);
-            var device = JsonSerializer.Deserialize<TuyaDeviceApiInfo>(response);
+            var device = JsonConvert.DeserializeObject<TuyaDeviceApiInfo>(response);
             return device;
         }
 
@@ -215,7 +215,7 @@ namespace com.clusterrr.TuyaNet
             var userId = (await GetDeviceInfoAsync(anyDeviceId)).UserId;
             var uri = $"users/{userId}/devices";
             var response = await RequestAsync(uri);
-            var devices = JsonSerializer.Deserialize<TuyaDeviceApiInfo[]>(response);
+            var devices = JsonConvert.DeserializeObject<TuyaDeviceApiInfo[]>(response);
             return devices;
         }
     }

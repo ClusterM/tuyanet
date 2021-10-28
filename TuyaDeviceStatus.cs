@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+﻿using Newtonsoft.Json;
 
 namespace com.clusterrr.TuyaNet
 {
@@ -10,13 +10,13 @@ namespace com.clusterrr.TuyaNet
         /// <summary>
         /// DPS number
         /// </summary>
-        [JsonPropertyName("code")]
+        [JsonProperty("code")]
         public string Code { get; set; }
 
         /// <summary>
         /// DPS value.
         /// </summary>
-        [JsonPropertyName("value")]
+        [JsonProperty("value")]
         public object Value { get; set; }
     }
 }

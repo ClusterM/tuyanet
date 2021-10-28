@@ -1,5 +1,5 @@
-﻿using System.Collections.Generic;
-using System.Text.Json.Serialization;
+﻿using Newtonsoft.Json;
+using System.Collections.Generic;
 
 namespace com.clusterrr.TuyaNet
 {
@@ -8,70 +8,70 @@ namespace com.clusterrr.TuyaNet
     /// </summary>
     public class TuyaDeviceApiInfo
     {
-        [JsonPropertyName("active_time")]
+        [JsonProperty("active_time")]
         public int ActiveTime { get; set; }
 
-        [JsonPropertyName("biz_type")]
+        [JsonProperty("biz_type")]
         public int BizType { get; set; }
 
-        [JsonPropertyName("category")]
+        [JsonProperty("category")]
         public string Category { get; set; }
 
-        [JsonPropertyName("create_time")]
+        [JsonProperty("create_time")]
         public int CreateTime { get; set; }
 
-        [JsonPropertyName("icon")]
+        [JsonProperty("icon")]
         public string Icon { get; set; }
 
-        [JsonPropertyName("id")]
+        [JsonProperty("id")]
         public string Id { get; set; }
 
-        [JsonPropertyName("ip")]
+        [JsonProperty("ip")]
         public string Ip { get; set; }
 
-        [JsonPropertyName("lat")]
+        [JsonProperty("lat")]
         public string Lat { get; set; }
 
-        [JsonPropertyName("local_key")]
+        [JsonProperty("local_key")]
         public string LocalKey { get; set; }
 
-        [JsonPropertyName("lon")]
+        [JsonProperty("lon")]
         public string Lon { get; set; }
 
-        [JsonPropertyName("model")]
+        [JsonProperty("model")]
         public string Model { get; set; }
 
-        [JsonPropertyName("name")]
+        [JsonProperty("name")]
         public string Name { get; set; }
 
-        [JsonPropertyName("online")]
+        [JsonProperty("online")]
         public bool Online { get; set; }
 
-        [JsonPropertyName("owner_id")]
+        [JsonProperty("owner_id")]
         public string OwnerId { get; set; }
 
-        [JsonPropertyName("product_id")]
+        [JsonProperty("product_id")]
         public string ProductId { get; set; }
 
-        [JsonPropertyName("product_name")]
+        [JsonProperty("product_name")]
         public string ProductName { get; set; }
 
-        [JsonPropertyName("status")]
+        [JsonProperty("status")]
         public List<TuyaDeviceStatus> Status { get; set; }
 
-        [JsonPropertyName("sub")]
+        [JsonProperty("sub")]
         public bool Sub { get; set; }
 
-        [JsonPropertyName("time_zone")]
+        [JsonProperty("time_zone")]
         public string TimeZone { get; set; }
 
-        [JsonPropertyName("uid")]
+        [JsonProperty("uid")]
         public string UserId { get; set; }
 
-        [JsonPropertyName("update_time")]
+        [JsonProperty("update_time")]
         public int UpdateTime { get; set; }
 
-        [JsonPropertyName("uuid")]
+        [JsonProperty("uuid")]
         public string Uuid { get; set; }
 
         public override string ToString() => Name;

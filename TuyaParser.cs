@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -57,6 +58,10 @@ namespace com.clusterrr.TuyaNet
 
         internal static byte[] CreatePayload(TuyaCommand command, string json, byte[] key, TuyaProtocolVersion protocolVersion = TuyaProtocolVersion.V33)
         {
+            // Remove spaces and newlines
+            var root = JObject.Parse(json);
+            json = root.ToString(Newtonsoft.Json.Formatting.None);
+
             byte[] payload = Encoding.UTF8.GetBytes(json);
 
             if (protocolVersion == TuyaProtocolVersion.V33)

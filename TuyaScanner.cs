@@ -1,10 +1,10 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
 using System.Threading;
 
 namespace com.clusterrr.TuyaNet
@@ -129,7 +129,7 @@ namespace com.clusterrr.TuyaNet
 
         private void Parse(string json)
         {
-            var deviceInfo = JsonSerializer.Deserialize<TuyaDeviceScanInfo>(json);
+            var deviceInfo = JsonConvert.DeserializeObject<TuyaDeviceScanInfo>(json);
             OnDeviceInfoReceived?.Invoke(this, deviceInfo);
             if ((OnNewDeviceInfoReceived) != null && !devices.Contains(deviceInfo))
             {

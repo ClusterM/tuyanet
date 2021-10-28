@@ -1,5 +1,5 @@
-﻿using System;
-using System.Text.Json.Serialization;
+﻿using Newtonsoft.Json;
+using System;
 
 namespace com.clusterrr.TuyaNet
 {
@@ -8,28 +8,28 @@ namespace com.clusterrr.TuyaNet
     /// </summary>
     public class TuyaDeviceScanInfo : IEquatable<TuyaDeviceScanInfo>
     {
-        [JsonPropertyName("ip")]
+        [JsonProperty("ip")]
         public string IP { get; set; } = null;
 
-        [JsonPropertyName("gwId")]
+        [JsonProperty("gwId")]
         public string GwId { get; set; } = null;
 
-        [JsonPropertyName("active")]
+        [JsonProperty("active")]
         public int Active { get; set; } = 0;
 
-        [JsonPropertyName("ability")]
+        [JsonProperty("ability")]
         public int Ability { get; set; } = 0;
 
-        [JsonPropertyName("mode")]
+        [JsonProperty("mode")]
         public int Mode { get; set; } = 0;
 
-        [JsonPropertyName("encrypt")]
+        [JsonProperty("encrypt")]
         public bool Encryption { get; set; } = false;
 
-        [JsonPropertyName("productKey")]
+        [JsonProperty("productKey")]
         public string ProductKey { get; set; } = null;
 
-        [JsonPropertyName("version")]
+        [JsonProperty("version")]
         public string Version { get; set; } = null;
 
         public bool Equals(TuyaDeviceScanInfo other)

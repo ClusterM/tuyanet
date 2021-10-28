@@ -1,15 +1,30 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>com.clusterrr.TuyaNet</RootNamespace>
+    <AssemblyName>TuyaNet</AssemblyName>
+    <PackageId>Tuya.Net</PackageId>
     <Authors>Alexey "Cluster" Avdyukhin</Authors>
+    <Product>Tuya.Net</Product>
     <Description>.NET library to interface with Tuya WiFi smart devices.</Description>
-    <Copyright>(c) Cluster, 2021</Copyright>
-    <PackageProjectUrl>https://github.com/ClusterM/tuyanet</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/ClusterM/tuyanet.git</RepositoryUrl>
-    <RepositoryType>GIT</RepositoryType>
-    <PackageId>TuyaNet</PackageId>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageProjectUrl>https://github.com/ClusterM/tuyanet/</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/ClusterM/tuyanet/</RepositoryUrl>
+    <RepositoryType>Git</RepositoryType>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="LICENSE">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
+  </ItemGroup>
 
 </Project>
