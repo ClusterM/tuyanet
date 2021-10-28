@@ -24,7 +24,7 @@ namespace com.clusterrr.TuyaNet
         /// <param name="protocolVersion">Protocol version.</param>
         /// <param name="port">TCP port of device.</param>
         /// <param name="receiveTimeout">Receive timeout.</param>
-        public TuyaDevice(string ip, string localKey, string deviceId = null, TuyaProtocolVersion protocolVersion = TuyaProtocolVersion.V33, int port = 6668, int receiveTimeout = 250)
+        public TuyaDevice(string ip, string localKey, string deviceId, TuyaProtocolVersion protocolVersion = TuyaProtocolVersion.V33, int port = 6668, int receiveTimeout = 250)
         {
             IP = ip;
             LocalKey = localKey;
@@ -45,7 +45,7 @@ namespace com.clusterrr.TuyaNet
         /// <summary>
         /// Device ID.
         /// </summary>
-        public string DeviceId { get; private set; } = null;
+        public string DeviceId { get; private set; }
         /// <summary>
         /// TCP port of device.
         /// </summary>
@@ -66,6 +66,64 @@ namespace com.clusterrr.TuyaNet
         private TcpClient client = null;
 
         /// <summary>
+        /// Fills JSON string with base fields required by most commands.
+        /// </summary>
+        /// <param name="json">JSON string</param>
+        /// <param name="addGwId">Add "gwId" field with device ID.</param>
+        /// <param name="addDevId">Add "devId" field with device ID.</param>
+        /// <param name="addUid">Add "uid" field with device ID.</param>
+        /// <param name="addTime">Add "time" field with current timestamp.</param>
+        /// <returns>JSON string with added fields.</returns>
+        public string FillJson(string json, bool addGwId = true, bool addDevId = true, bool addUid = true, bool addTime = true)
+        {
+            JsonElement foo;
+            if (string.IsNullOrWhiteSpace(json)) json = "{}";
+            using (MemoryStream memoryStream = new MemoryStream())
+            {
+                using (Utf8JsonWriter utf8JsonWriter = new Utf8JsonWriter(memoryStream))
+                {
+                    using (JsonDocument jsonDocument = JsonDocument.Parse(json))
+                    {
+                        utf8JsonWriter.WriteStartObject();
+
+                        if (addGwId && !jsonDocument.RootElement.TryGetProperty("gwId", out foo))
+                        {
+                            utf8JsonWriter.WritePropertyName("gwId");
+                            utf8JsonWriter.WriteStringValue(DeviceId);
+                            if (string.IsNullOrWhiteSpace(DeviceId))
+                                throw new ArgumentNullException("deviceId", "Device ID can't be null.");
+                        }
+                        if (addDevId && !jsonDocument.RootElement.TryGetProperty("devId", out foo))
+                        {
+                            utf8JsonWriter.WritePropertyName("devId");
+                            utf8JsonWriter.WriteStringValue(DeviceId);
+                            if (string.IsNullOrWhiteSpace(DeviceId))
+                                throw new ArgumentNullException("deviceId", "Device ID can't be null.");
+                        }
+                        if (addUid && !jsonDocument.RootElement.TryGetProperty("uid", out foo))
+                        {
+                            utf8JsonWriter.WritePropertyName("uid");
+                            utf8JsonWriter.WriteStringValue(DeviceId);
+                            if (string.IsNullOrWhiteSpace(DeviceId))
+                                throw new ArgumentNullException("deviceId", "Device ID can't be null.");
+                        }
+                        if (addTime && !jsonDocument.RootElement.TryGetProperty("t", out foo))
+                        {
+                            utf8JsonWriter.WritePropertyName("t");
+                            utf8JsonWriter.WriteStringValue((DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds.ToString("0"));
+                        }
+                        foreach (var testDataElement in jsonDocument.RootElement.EnumerateObject())
+                        {
+                            testDataElement.WriteTo(utf8JsonWriter);
+                        }
+                        utf8JsonWriter.WriteEndObject();
+                    }
+                }
+                return Encoding.UTF8.GetString(memoryStream.ToArray());
+            }
+        }
+
+        /// <summary>
         /// Creates encoded and encrypted payload data from JSON string.
         /// </summary>
         /// <param name="command">Tuya command ID.</param>
@@ -77,7 +135,7 @@ namespace com.clusterrr.TuyaNet
         /// <summary>
         /// Parses and decrypts payload data from received bytes.
         /// </summary>
-        /// <param name="data">.</param>
+        /// <param name="data">Raw data to parse and decrypt.</param>
         /// <returns>Instance of TuyaLocalResponse.</returns>
         public TuyaLocalResponse DecodeResponse(byte[] data)            
             => TuyaParser.DecodeResponse(data, Encoding.UTF8.GetBytes(LocalKey), ProtocolVersion);
@@ -87,23 +145,23 @@ namespace com.clusterrr.TuyaNet
         /// </summary>
         /// <param name="command">Tuya command ID.</param>
         /// <param name="json">JSON string.</param>
-        /// <param name="command">Tuya command ID.</param>
-        /// <param name="json">String with JSON to send.</param>
+        /// <param name="retries">Number of retries in case of network error.</param>
+        /// <param name="nullRetries">Number of retries in case of empty answer.</param>
         /// <returns>Parsed and decrypred received data as instance of TuyaLocalResponse.</returns>
-        public async Task<TuyaLocalResponse> SendAsync(TuyaCommand command, string json, int tries = 2, int nullRetries = 1)
-            => DecodeResponse(await SendAsync(CreatePayload(command, json), tries, nullRetries));
+        public async Task<TuyaLocalResponse> SendAsync(TuyaCommand command, string json, int retries = 2, int nullRetries = 1)
+            => DecodeResponse(await SendAsync(CreatePayload(command, json), retries, nullRetries));
 
         /// <summary>
         /// Sends raw data over to device and read response.
         /// </summary>
         /// <param name="data">Raw data to send.</param>
-        /// <param name="tries">Number of retries.</param>
-        /// <param name="nullRetries">Number of retries in case of null answer.</param>
+        /// <param name="retries">Number of retries in case of network error.</param>
+        /// <param name="nullRetries">Number of retries in case of empty answer.</param>
         /// <returns>Received data (raw).</returns>
-        public async Task<byte[]> SendAsync(byte[] data, int tries = 2, int nullRetries = 1)
+        public async Task<byte[]> SendAsync(byte[] data, int retries = 2, int nullRetries = 1)
         {
             Exception lastException = null;
-            while (tries-- > 0)
+            while (retries-- > 0)
             {
                 if (!PermanentConnection || (client?.Connected == false))
                 {
@@ -183,22 +241,11 @@ namespace com.clusterrr.TuyaNet
         /// <summary>
         /// Requests current DPS status.
         /// </summary>
-        /// <param name="deviceId">Device ID, required only if constuctor was called without it.</param>
         /// <returns>Dictionary of DPS numbers and values.</returns>
-        public async Task<Dictionary<int, object>> GetDps(string deviceId = null)
+        public async Task<Dictionary<int, object>> GetDps()
         {
-            deviceId = deviceId ?? DeviceId;
-            if (string.IsNullOrEmpty(deviceId))
-                throw new ArgumentException("deviceId is not specified", "deviceId");
-            var cmd = new Dictionary<string, object>
-            {
-                { "gwId", deviceId },
-                { "devId", deviceId },
-                { "uid", deviceId },
-                { "t", (DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds.ToString("0") }
-            };
-            string requestJson = JsonSerializer.Serialize(cmd);
-            var response = await SendAsync(TuyaCommand.DP_QUERY, requestJson, tries: 2, nullRetries: 1);
+            var requestJson = FillJson(null);
+            var response = await SendAsync(TuyaCommand.DP_QUERY, requestJson, retries: 2, nullRetries: 1);
             if (string.IsNullOrEmpty(response.JSON))
                 throw new InvalidDataException("Response is empty");
             var responseJson = JsonDocument.Parse(response.JSON);
@@ -211,32 +258,24 @@ namespace com.clusterrr.TuyaNet
         /// </summary>
         /// <param name="dpsNumber">DPS number.</param>
         /// <param name="value">Value.</param>
-        /// <param name="deviceId">Device ID, required only if constuctor was called without it.</param>
         /// <returns></returns>
-        public async Task<Dictionary<int, object>> SetDps(int dpsNumber, object value, string deviceId = null)
-            => await SetDps(new Dictionary<int, object> { { dpsNumber, value } }, deviceId);
+        public async Task<Dictionary<int, object>> SetDps(int dpsNumber, object value)
+            => await SetDps(new Dictionary<int, object> { { dpsNumber, value } });
 
         /// <summary>
         /// Sets DPS to specified value.
         /// </summary>
         /// <param name="dps">Dictionary of DPS numbers and values to set.</param>
-        /// <param name="deviceId">Device ID, required only if constuctor was called without it.</param>
         /// <returns></returns>
-        public async Task<Dictionary<int, object>> SetDps(Dictionary<int, object> dps, string deviceId = null)
+        public async Task<Dictionary<int, object>> SetDps(Dictionary<int, object> dps)
         {
-            deviceId = deviceId ?? DeviceId;
-            if (string.IsNullOrEmpty(deviceId))
-                throw new ArgumentException("deviceId is not specified", "deviceId");
             var cmd = new Dictionary<string, object>
             {
-                { "gwId", deviceId },
-                { "devId", deviceId },
-                { "uid", deviceId },
-                { "t", (DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds.ToString("0") },
                 { "dps",  dps }
             };
             string requestJson = JsonSerializer.Serialize(cmd);
-            var response = await SendAsync(TuyaCommand.CONTROL, requestJson, tries: 2, nullRetries: 1);
+            requestJson = FillJson(requestJson);
+            var response = await SendAsync(TuyaCommand.CONTROL, requestJson, retries: 2, nullRetries: 1);
             if (string.IsNullOrEmpty(response.JSON))
                 throw new InvalidDataException("Response is empty");
             var responseJson = JsonDocument.Parse(response.JSON);
