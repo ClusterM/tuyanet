@@ -221,5 +221,5 @@ newDps = await device.SetDps(1, true);
 
 ## Contacts
 * My site (Russian): https://clusterrr.com
-* Email and PayPal: clusterr@clusterr.com
+* Email and PayPal: clusterrr@clusterr.com
 * Telegram: https://t.me/Cluster_M
