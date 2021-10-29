@@ -56,7 +56,7 @@ namespace com.clusterrr.TuyaNet
             return data;
         }
 
-        internal static byte[] CreatePayload(TuyaCommand command, string json, byte[] key, TuyaProtocolVersion protocolVersion = TuyaProtocolVersion.V33)
+        internal static byte[] EncodeRequest(TuyaCommand command, string json, byte[] key, TuyaProtocolVersion protocolVersion = TuyaProtocolVersion.V33)
         {
             // Remove spaces and newlines
             var root = JObject.Parse(json);

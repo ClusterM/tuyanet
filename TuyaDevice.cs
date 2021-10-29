@@ -99,8 +99,8 @@ namespace com.clusterrr.TuyaNet
         /// <param name="command">Tuya command ID.</param>
         /// <param name="json">String with JSON to send.</param>
         /// <returns>Raw data.</returns>
-        public byte[] CreatePayload(TuyaCommand command, string json)
-            => TuyaParser.CreatePayload(command, json, Encoding.UTF8.GetBytes(LocalKey), ProtocolVersion);
+        public byte[] EncodeRequest(TuyaCommand command, string json)
+            => TuyaParser.EncodeRequest(command, json, Encoding.UTF8.GetBytes(LocalKey), ProtocolVersion);
 
         /// <summary>
         /// Parses and decrypts payload data from received bytes.
@@ -119,7 +119,7 @@ namespace com.clusterrr.TuyaNet
         /// <param name="nullRetries">Number of retries in case of empty answer.</param>
         /// <returns>Parsed and decrypred received data as instance of TuyaLocalResponse.</returns>
         public async Task<TuyaLocalResponse> SendAsync(TuyaCommand command, string json, int retries = 2, int nullRetries = 1)
-            => DecodeResponse(await SendAsync(CreatePayload(command, json), retries, nullRetries));
+            => DecodeResponse(await SendAsync(EncodeRequest(command, json), retries, nullRetries));
 
         /// <summary>
         /// Sends raw data over to device and read response.
