@@ -1,6 +1,6 @@
 # Tuya.Net
 
-.NET Standard 2.0 library to interface with Tuya WiFi smart devices.
+.NET Standard 2.0 library to interface with Tuya WiFi smart devices over LAN, without using the cloud.
 
 ## Description
 
@@ -21,7 +21,7 @@ Most requests must contain base JSON values:
     "t": "CURRENT_TIME"
 }
 ```
-Where `DEVICE_ID` is a **device ID** and CURRENT_TIME is a Unix timestamp as a string.
+Where `DEVICE_ID` is a **device ID** and `CURRENT_TIME` is a Unix timestamp as a string.
 
 Every response contains command code, JSON and return code (0 = success).
 
