@@ -1,6 +1,6 @@
 # Tuya.Net
 
-.NET library to interface with Tuya WiFi smart devices.
+.NET Standard 2.0 library to interface with Tuya WiFi smart devices.
 
 ## Description
 
