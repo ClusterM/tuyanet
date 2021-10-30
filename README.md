@@ -13,6 +13,11 @@ You can use NuGet:
 PM> Install-Package TuyaNet
 ```
 
+### Dependencies
+
+* .NETStandard 2.0
+* Newtonsoft.Json (>= 13.0.1)
+
 ## How communication with Tuya devices works at all
 
 Every Tuya device broadcasts to local network UDP packets with short info about itself. This data is encrypted with AES but the encryption key is the same for every device and it can be easily decrypted. This packet is sent every 5 seconds and contains data with a unique **device ID**, device type ID and protocol version.
