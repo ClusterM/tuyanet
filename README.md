@@ -6,6 +6,13 @@
 
 This library controls and monitors [Tuya](https://en.tuya.com/) compatible WiFi Smart Devices (Plugs, Switches, Lights, Window Covers, etc.) using the local area network (LAN). [Tuya](https://en.tuya.com/) devices are designed to communicate with the TuyaCloud but most also expose a local area network API, allowing us to directly control the devices without using the cloud.
 
+## Installation
+
+You can use NuGet:
+```
+PM> Install-Package TuyaNet
+```
+
 ## How communication with Tuya devices works at all
 
 Every Tuya device broadcasts to local network UDP packets with short info about itself. This data is encrypted with AES but the encryption key is the same for every device and it can be easily decrypted. This packet is sent every 5 seconds and contains data with a unique **device ID**, device type ID and protocol version.
