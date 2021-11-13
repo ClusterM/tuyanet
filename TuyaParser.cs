@@ -69,7 +69,7 @@ namespace com.clusterrr.TuyaNet
                 // Encrypt
                 payload = Encrypt(payload, key);
                 // Add protocol 3.3 header
-                if ((command != TuyaCommand.DP_QUERY) && (command != TuyaCommand.UPDATED_PS))
+                if ((command != TuyaCommand.DP_QUERY) && (command != TuyaCommand.UPDATE_DPS))
                     payload = Enumerable.Concat(PROTOCOL_33_HEADER, payload).ToArray();
             }
             else if (command == TuyaCommand.CONTROL)

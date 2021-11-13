@@ -22,7 +22,7 @@
         ENABLE_WIFI = 14,
         DP_QUERY_NEW = 16,
         SCENE_EXECUTE = 17,
-        UPDATED_PS = 18,
+        UPDATE_DPS = 18,
         UDP_NEW = 19,
         AP_CONFIG_NEW = 20,
         GET_LOCAL_TIME_CMD = 28,

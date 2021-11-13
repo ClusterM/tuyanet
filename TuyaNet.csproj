@@ -14,6 +14,7 @@
     <RepositoryType>Git</RepositoryType>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <LangVersion>9.0</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>

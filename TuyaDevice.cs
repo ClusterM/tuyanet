@@ -147,13 +147,7 @@ namespace com.clusterrr.TuyaNet
                     await stream.WriteAsync(data, 0, data.Length).ConfigureAwait(false);
                     return await Receive(stream, nullRetries);
                 }
-                catch (IOException ex)
-                {
-                    // sockets sometimes drop the connection unexpectedly, so let's 
-                    // retry at least once
-                    lastException = ex;
-                }
-                catch (TimeoutException ex)
+                catch (Exception ex) when (ex is IOException or TimeoutException)
                 {
                     // sockets sometimes drop the connection unexpectedly, so let's 
                     // retry at least once
