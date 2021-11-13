@@ -209,13 +209,15 @@ namespace com.clusterrr.TuyaNet
         }
 
         /// <summary>
-        /// Requests current DPS status.
+        /// Requests current DPs status.
         /// </summary>
-        /// <returns>Dictionary of DPS numbers and values.</returns>
-        public async Task<Dictionary<int, object>> GetDps()
+        /// <param name="retries">Number of retries in case of network error.</param>
+        /// <param name="nullRetries">Number of retries in case of empty answer.</param>
+        /// <returns>Dictionary of DP numbers and values.</returns>
+        public async Task<Dictionary<int, object>> GetDps(int retries = 5, int nullRetries = 1)
         {
             var requestJson = FillJson(null);
-            var response = await SendAsync(TuyaCommand.DP_QUERY, requestJson, retries: 2, nullRetries: 1);
+            var response = await SendAsync(TuyaCommand.DP_QUERY, requestJson, retries, nullRetries);
             if (string.IsNullOrEmpty(response.JSON))
                 throw new InvalidDataException("Response is empty");
             var root = JObject.Parse(response.JSON);
@@ -223,21 +225,37 @@ namespace com.clusterrr.TuyaNet
             return dps.ToDictionary(kv => int.Parse(kv.Key), kv => kv.Value);
         }
 
+        [Obsolete("SetDps() is renamed to SetDp(), use SetDp()")]
         /// <summary>
-        /// Sets DPS to specified value.
+        /// Sets single DP to specified value.
         /// </summary>
-        /// <param name="dpsNumber">DPS number.</param>
+        /// <param name="dp">DP number.</param>
         /// <param name="value">Value.</param>
+        /// <param name="retries">Number of retries in case of network error.</param>
+        /// <param name="nullRetries">Number of retries in case of empty answer.</param>
         /// <returns></returns>
-        public async Task<Dictionary<int, object>> SetDps(int dpsNumber, object value)
-            => await SetDps(new Dictionary<int, object> { { dpsNumber, value } });
+        public async Task<Dictionary<int, object>> SetDps(int dp, object value, int retries = 2, int nullRetries = 1)
+            => await SetDps(new Dictionary<int, object> { { dp, value } }, retries, nullRetries);
 
         /// <summary>
-        /// Sets DPS to specified value.
+        /// Sets single DP to specified value.
         /// </summary>
-        /// <param name="dps">Dictionary of DPS numbers and values to set.</param>
+        /// <param name="dp">DP number.</param>
+        /// <param name="value">Value.</param>
+        /// <param name="retries">Number of retries in case of network error.</param>
+        /// <param name="nullRetries">Number of retries in case of empty answer.</param>
         /// <returns></returns>
-        public async Task<Dictionary<int, object>> SetDps(Dictionary<int, object> dps)
+        public async Task<Dictionary<int, object>> SetDp(int dp, object value, int retries = 2, int nullRetries = 1)
+            => await SetDps(new Dictionary<int, object> { { dp, value } }, retries, nullRetries);
+
+        /// <summary>
+        /// Sets DPs to specified value.
+        /// </summary>
+        /// <param name="dps">Dictionary of DP numbers and values to set.</param>
+        /// <param name="retries">Number of retries in case of network error.</param>
+        /// <param name="nullRetries">Number of retries in case of empty answer.</param>
+        /// <returns></returns>
+        public async Task<Dictionary<int, object>> SetDps(Dictionary<int, object> dps, int retries = 2, int nullRetries = 1)
         {
             var cmd = new Dictionary<string, object>
             {
@@ -245,7 +263,38 @@ namespace com.clusterrr.TuyaNet
             };
             string requestJson = JsonConvert.SerializeObject(cmd);
             requestJson = FillJson(requestJson);
-            var response = await SendAsync(TuyaCommand.CONTROL, requestJson, retries: 2, nullRetries: 1);
+            var response = await SendAsync(TuyaCommand.CONTROL, requestJson, retries, nullRetries);
+            if (string.IsNullOrEmpty(response.JSON))
+                throw new InvalidDataException("Response is empty");
+            var root = JObject.Parse(response.JSON);
+            var newDps = JsonConvert.DeserializeObject<Dictionary<string, object>>(root.GetValue("dps").ToString());
+            return newDps.ToDictionary(kv => int.Parse(kv.Key), kv => kv.Value);
+        }
+
+        /// <summary>
+        /// Update DP values.
+        /// </summary>
+        /// <param name="dpIds">DP identificators to update (can be empty for some devices).</param>
+        /// <returns>Dictionary of DP numbers and values.</returns>
+        public async Task<Dictionary<int, object>> UpdateDps(params int[] dpIds)
+            => await UpdateDps(dpIds, retries: 5, nullRetries: 1);
+
+        /// <summary>
+        /// Update DP values.
+        /// </summary>
+        /// <param name="dpIds">DP identificators to update (can be empty for some devices).</param>
+        /// <param name="retries">Number of retries in case of network error.</param>
+        /// <param name="nullRetries">Number of retries in case of empty answer.</param>
+        /// <returns>Dictionary of DP numbers and values.</returns>
+        public async Task<Dictionary<int, object>> UpdateDps(IEnumerable<int> dpIds, int retries = 5, int nullRetries = 1)
+        {
+            var cmd = new Dictionary<string, object>
+            {
+                { "dpId",  dpIds.ToArray() }
+            };
+            string requestJson = JsonConvert.SerializeObject(cmd);
+            requestJson = FillJson(requestJson);
+            var response = await SendAsync(TuyaCommand.UPDATE_DPS, requestJson, retries, nullRetries);
             if (string.IsNullOrEmpty(response.JSON))
                 throw new InvalidDataException("Response is empty");
             var root = JObject.Parse(response.JSON);
