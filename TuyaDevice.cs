@@ -296,7 +296,7 @@ namespace com.clusterrr.TuyaNet
             requestJson = FillJson(requestJson);
             var response = await SendAsync(TuyaCommand.UPDATE_DPS, requestJson, retries, nullRetries);
             if (string.IsNullOrEmpty(response.JSON))
-                throw new InvalidDataException("Response is empty");
+                return new Dictionary<int, object>();
             var root = JObject.Parse(response.JSON);
             var newDps = JsonConvert.DeserializeObject<Dictionary<string, object>>(root.GetValue("dps").ToString());
             return newDps.ToDictionary(kv => int.Parse(kv.Key), kv => kv.Value);
