@@ -242,5 +242,5 @@ newDps = await device.UpdateDps(9, 10);
 
 ## Contacts
 * My site (Russian): https://clusterrr.com
-* Email and PayPal: clusterrr@clusterr.com
+* Email and PayPal: clusterrr@clusterrr.com
 * Telegram: https://t.me/Cluster_M
