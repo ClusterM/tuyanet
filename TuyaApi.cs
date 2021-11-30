@@ -104,7 +104,7 @@ namespace com.clusterrr.TuyaNet
         }
 
         /// <summary>
-        /// Low-level request to API.
+        /// Request to official API.
         /// </summary>
         /// <param name="uri">Method URI.</param>
         /// <param name="body">Body of request if any.</param>
