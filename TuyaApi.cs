@@ -190,25 +190,22 @@ namespace com.clusterrr.TuyaNet
         }
 
         /// <summary>
-        /// Requests access token.
-        /// </summary>
-        /// <returns>Access token.</returns>
-        private async Task<TuyaToken> GetAccessTokenAsync()
-        {
-            var uri = "v1.0/token?grant_type=1";
-            var response = await RequestAsync(Method.GET, uri, noToken: true);
-            var token = JsonConvert.DeserializeObject<TuyaToken>(response);
-            return token;
-        }
-
-        /// <summary>
         /// Refreshes access token if it's expired or not requested yet.
         /// </summary>
         private async Task RefreshAccessTokenAsync()
         {
-            if ((token == null) || tokenTime.AddSeconds(token.ExpireTime) >= DateTime.Now)
+            if (token == null)
             {
-                token = await GetAccessTokenAsync();
+                var uri = "v1.0/token?grant_type=1";
+                var response = await RequestAsync(Method.GET, uri, noToken: true);
+                token = JsonConvert.DeserializeObject<TuyaToken>(response);
+                tokenTime = DateTime.Now;
+            }
+            else if (tokenTime.AddSeconds(token.ExpireTime) >= DateTime.Now)
+            {
+                var uri = $"v1.0/token/{token.RefreshToken}";
+                var response = await RequestAsync(Method.GET, uri, noToken: true);
+                token = JsonConvert.DeserializeObject<TuyaToken>(response);
                 tokenTime = DateTime.Now;
             }
         }
