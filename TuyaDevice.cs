@@ -29,6 +29,21 @@ namespace com.clusterrr.TuyaNet
         {
             IP = ip;
             LocalKey = localKey;
+            this.accessId = null;
+            this.apiSecret = null;
+            DeviceId = deviceId;
+            ProtocolVersion = protocolVersion;
+            Port = port;
+            ReceiveTimeout = receiveTimeout;
+        }
+
+        public TuyaDevice(string ip, TuyaApi.Region region, string accessId, string apiSecret, string deviceId, TuyaProtocolVersion protocolVersion = TuyaProtocolVersion.V33, int port = 6668, int receiveTimeout = 250)
+        {
+            IP = ip;
+            LocalKey = null;
+            this.region = region;
+            this.accessId = accessId;
+            this.apiSecret = apiSecret;
             DeviceId = deviceId;
             ProtocolVersion = protocolVersion;
             Port = port;
@@ -42,7 +57,7 @@ namespace com.clusterrr.TuyaNet
         /// <summary>
         /// Local key of device.
         /// </summary>
-        public string LocalKey { get; private set; }
+        public string LocalKey { get; set; }
         /// <summary>
         /// Device ID.
         /// </summary>
@@ -65,6 +80,9 @@ namespace com.clusterrr.TuyaNet
         public bool PermanentConnection { get; set; } = false;
 
         private TcpClient client = null;
+        private TuyaApi.Region region;
+        private string accessId;
+        private string apiSecret;
 
         /// <summary>
         /// Fills JSON string with base fields required by most commands.
@@ -100,7 +118,10 @@ namespace com.clusterrr.TuyaNet
         /// <param name="json">String with JSON to send.</param>
         /// <returns>Raw data.</returns>
         public byte[] EncodeRequest(TuyaCommand command, string json)
-            => TuyaParser.EncodeRequest(command, json, Encoding.UTF8.GetBytes(LocalKey), ProtocolVersion);
+        {
+            if (string.IsNullOrEmpty(accessId)) throw new ArgumentException("LocalKey is not specified", "LocalKey");
+            return TuyaParser.EncodeRequest(command, json, Encoding.UTF8.GetBytes(LocalKey), ProtocolVersion);
+        }
 
         /// <summary>
         /// Parses and decrypts payload data from received bytes.
@@ -108,7 +129,10 @@ namespace com.clusterrr.TuyaNet
         /// <param name="data">Raw data to parse and decrypt.</param>
         /// <returns>Instance of TuyaLocalResponse.</returns>
         public TuyaLocalResponse DecodeResponse(byte[] data)
-            => TuyaParser.DecodeResponse(data, Encoding.UTF8.GetBytes(LocalKey), ProtocolVersion);
+        {
+            if (string.IsNullOrEmpty(accessId)) throw new ArgumentException("LocalKey is not specified", "LocalKey");
+            return TuyaParser.DecodeResponse(data, Encoding.UTF8.GetBytes(LocalKey), ProtocolVersion);
+        }
 
         /// <summary>
         /// Sends JSON string to device and reads response.
@@ -300,6 +324,18 @@ namespace com.clusterrr.TuyaNet
             var root = JObject.Parse(response.JSON);
             var newDps = JsonConvert.DeserializeObject<Dictionary<string, object>>(root.GetValue("dps").ToString());
             return newDps.ToDictionary(kv => int.Parse(kv.Key), kv => kv.Value);
+        }
+
+        /// <summary>
+        /// Get current local key from Tuya Cloud API
+        /// </summary>
+        public async Task RefreshLocalKeyAsync()
+        {
+            if (string.IsNullOrEmpty(accessId)) throw new ArgumentException("Access ID is not specified", "accessId");
+            if (string.IsNullOrEmpty(apiSecret)) throw new ArgumentException("API secret is not specified", "apiSecret");
+            var api = new TuyaApi(region, accessId, apiSecret);
+            var deviceInfo = await api.GetDeviceInfoAsync(DeviceId);
+            LocalKey = deviceInfo.LocalKey;
         }
 
         /// <summary>

@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 namespace com.clusterrr.TuyaNet
 {
     /// <summary>
-    /// Provides access to Tuya Web API.
+    /// Provides access to Tuya Cloud API.
     /// </summary>
     public class TuyaApi
     {
