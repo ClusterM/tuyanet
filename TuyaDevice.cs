@@ -119,7 +119,7 @@ namespace com.clusterrr.TuyaNet
         /// <returns>Raw data.</returns>
         public byte[] EncodeRequest(TuyaCommand command, string json)
         {
-            if (string.IsNullOrEmpty(accessId)) throw new ArgumentException("LocalKey is not specified", "LocalKey");
+            if (string.IsNullOrEmpty(LocalKey)) throw new ArgumentException("LocalKey is not specified", "LocalKey");
             return TuyaParser.EncodeRequest(command, json, Encoding.UTF8.GetBytes(LocalKey), ProtocolVersion);
         }
 
@@ -130,7 +130,7 @@ namespace com.clusterrr.TuyaNet
         /// <returns>Instance of TuyaLocalResponse.</returns>
         public TuyaLocalResponse DecodeResponse(byte[] data)
         {
-            if (string.IsNullOrEmpty(accessId)) throw new ArgumentException("LocalKey is not specified", "LocalKey");
+            if (string.IsNullOrEmpty(LocalKey)) throw new ArgumentException("LocalKey is not specified", "LocalKey");
             return TuyaParser.DecodeResponse(data, Encoding.UTF8.GetBytes(LocalKey), ProtocolVersion);
         }
 
