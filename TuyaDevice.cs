@@ -169,7 +169,7 @@ namespace com.clusterrr.TuyaNet
                         client = new TcpClient(IP, Port);
                     var stream = client.GetStream();
                     await stream.WriteAsync(data, 0, data.Length).ConfigureAwait(false);
-                    return await Receive(stream, nullRetries);
+                    return await ReceiveAsync(stream, nullRetries);
                 }
                 catch (Exception ex) when (ex is IOException or TimeoutException)
                 {
@@ -191,7 +191,7 @@ namespace com.clusterrr.TuyaNet
             throw lastException;
         }
 
-        private async Task<byte[]> Receive(NetworkStream stream, int nullRetries = 1)
+        private async Task<byte[]> ReceiveAsync(NetworkStream stream, int nullRetries = 1)
         {
             byte[] result;
             byte[] buffer = new byte[1024];
@@ -225,7 +225,7 @@ namespace com.clusterrr.TuyaNet
             {
                 try
                 {
-                    result = await Receive(stream, nullRetries - 1);
+                    result = await ReceiveAsync(stream, nullRetries - 1);
                 }
                 catch { }
             }
@@ -383,12 +383,13 @@ namespace com.clusterrr.TuyaNet
         /// <summary>
         /// Get current local key from Tuya Cloud API
         /// </summary>
-        public async Task RefreshLocalKeyAsync()
+        /// <param name="forceTokenRefresh">Refresh access token even it's not expired.</param>
+        public async Task RefreshLocalKeyAsync(bool forceTokenRefresh = false)
         {
             if (string.IsNullOrEmpty(accessId)) throw new ArgumentException("Access ID is not specified", "accessId");
             if (string.IsNullOrEmpty(apiSecret)) throw new ArgumentException("API secret is not specified", "apiSecret");
             var api = new TuyaApi(region, accessId, apiSecret);
-            var deviceInfo = await api.GetDeviceInfoAsync(DeviceId);
+            var deviceInfo = await api.GetDeviceInfoAsync(DeviceId, forceTokenRefresh: forceTokenRefresh);
             LocalKey = deviceInfo.LocalKey;
         }
 
