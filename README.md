@@ -216,20 +216,20 @@ TuyaLocalResponse response = await device.SendAsync(TuyaCommand.CONTROL, device.
 
 Finally, there are `GetDps()` and `SetDps()` methods:
 ```C#
-Dictionary<int, object> dps = await device.GetDps();
+Dictionary<int, object> dps = await device.GetDpsAsync();
 // Change multiple values at once
-Dictionary<int, object> newDps = await device.SetDps(new Dictionary<int, object> { { 1, false }, { 2, true } });
+Dictionary<int, object> newDps = await device.SetDpsAsync(new Dictionary<int, object> { { 1, false }, { 2, true } });
 // Change single value
-newDps = await device.SetDp(1, true);
+newDps = await device.SetDpAsync(1, true);
 ```
 
 Some devices may have dynamically changed values, such as timers. They need to be updated before reading:
 ```C#
-newDps = await device.UpdateDps(new int[] { 9, 10 });
+newDps = await device.UpdateDpsAsync(new int[] { 9, 10 });
 ```
 Or just:
 ```C#
-newDps = await device.UpdateDps(9, 10);
+newDps = await device.UpdateDpsAsync(9, 10);
 ```
 
 ## Credits
