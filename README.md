@@ -231,6 +231,16 @@ Or just:
 ```C#
 newDps = await device.UpdateDpsAsync(9, 10);
 ```
+## Automatic local key refresh
+
+You can create `TuyaDevice` object without local key but with API key/secret like this:
+```C#
+var dev = new TuyaDevice(ip: DEVICE_IP, region: API_REGION, accessId: ACCESS_ID, apiSecret: API_SECRET, deviceId: DEVICE_ID);
+```
+Then obtain local key:
+```C#
+await dev.RefreshLocalKeyAsync()
+```
 
 ## Credits
   * TinyTuya https://github.com/jasonacox/tinytuya by Jason Cox
