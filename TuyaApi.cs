@@ -22,6 +22,7 @@ namespace com.clusterrr.TuyaNet
         private readonly HttpClient httpClient;
         private TuyaToken token = null;
         private DateTime tokenTime = new DateTime();
+        public string TokenUid { get => token?.Uid;}
 
         private class TuyaToken
         {

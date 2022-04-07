@@ -238,7 +238,17 @@ namespace com.clusterrr.TuyaNet
         /// <param name="retries">Number of retries in case of network error.</param>
         /// <param name="nullRetries">Number of retries in case of empty answer.</param>
         /// <returns>Dictionary of DP numbers and values.</returns>
+        [Obsolete("Use GetDpsAsync")]
         public async Task<Dictionary<int, object>> GetDps(int retries = 5, int nullRetries = 1)
+            => await GetDpsAsync(retries, nullRetries);
+
+        /// <summary>
+        /// Requests current DPs status.
+        /// </summary>
+        /// <param name="retries">Number of retries in case of network error.</param>
+        /// <param name="nullRetries">Number of retries in case of empty answer.</param>
+        /// <returns>Dictionary of DP numbers and values.</returns>
+        public async Task<Dictionary<int, object>> GetDpsAsync(int retries = 5, int nullRetries = 1)
         {
             var requestJson = FillJson(null);
             var response = await SendAsync(TuyaCommand.DP_QUERY, requestJson, retries, nullRetries);
@@ -249,7 +259,6 @@ namespace com.clusterrr.TuyaNet
             return dps.ToDictionary(kv => int.Parse(kv.Key), kv => kv.Value);
         }
 
-        [Obsolete("SetDps() is renamed to SetDp(), use SetDp()")]
         /// <summary>
         /// Sets single DP to specified value.
         /// </summary>
@@ -257,9 +266,10 @@ namespace com.clusterrr.TuyaNet
         /// <param name="value">Value.</param>
         /// <param name="retries">Number of retries in case of network error.</param>
         /// <param name="nullRetries">Number of retries in case of empty answer.</param>
-        /// <returns></returns>
+        /// <returns>Dictionary of DP numbers and values.</returns>
+        [Obsolete("Use SetDpAsync")]
         public async Task<Dictionary<int, object>> SetDps(int dp, object value, int retries = 2, int nullRetries = 1)
-            => await SetDps(new Dictionary<int, object> { { dp, value } }, retries, nullRetries);
+            => await SetDpsAsync(new Dictionary<int, object> { { dp, value } }, retries, nullRetries);
 
         /// <summary>
         /// Sets single DP to specified value.
@@ -268,9 +278,21 @@ namespace com.clusterrr.TuyaNet
         /// <param name="value">Value.</param>
         /// <param name="retries">Number of retries in case of network error.</param>
         /// <param name="nullRetries">Number of retries in case of empty answer.</param>
-        /// <returns></returns>
+        /// <returns>Dictionary of DP numbers and values.</returns>
+        [Obsolete("Use SetDpAsync")]
         public async Task<Dictionary<int, object>> SetDp(int dp, object value, int retries = 2, int nullRetries = 1)
-            => await SetDps(new Dictionary<int, object> { { dp, value } }, retries, nullRetries);
+            => await SetDpAsync(dp, value, retries, nullRetries);
+
+        /// <summary>
+        /// Sets single DP to specified value.
+        /// </summary>
+        /// <param name="dp">DP number.</param>
+        /// <param name="value">Value.</param>
+        /// <param name="retries">Number of retries in case of network error.</param>
+        /// <param name="nullRetries">Number of retries in case of empty answer.</param>
+        /// <returns>Dictionary of DP numbers and values.</returns>
+        public async Task<Dictionary<int, object>> SetDpAsync(int dp, object value, int retries = 2, int nullRetries = 1)
+            => await SetDpsAsync(new Dictionary<int, object> { { dp, value } }, retries, nullRetries);
 
         /// <summary>
         /// Sets DPs to specified value.
@@ -278,8 +300,20 @@ namespace com.clusterrr.TuyaNet
         /// <param name="dps">Dictionary of DP numbers and values to set.</param>
         /// <param name="retries">Number of retries in case of network error.</param>
         /// <param name="nullRetries">Number of retries in case of empty answer.</param>
-        /// <returns></returns>
+        /// <returns>Dictionary of DP numbers and values.</returns>
+        [Obsolete("Use SetDpsAsync")]
         public async Task<Dictionary<int, object>> SetDps(Dictionary<int, object> dps, int retries = 2, int nullRetries = 1)
+            => await SetDpsAsync(dps, retries, nullRetries);
+
+
+        /// <summary>
+        /// Sets DPs to specified value.
+        /// </summary>
+        /// <param name="dps">Dictionary of DP numbers and values to set.</param>
+        /// <param name="retries">Number of retries in case of network error.</param>
+        /// <param name="nullRetries">Number of retries in case of empty answer.</param>
+        /// <returns>Dictionary of DP numbers and values.</returns>
+        public async Task<Dictionary<int, object>> SetDpsAsync(Dictionary<int, object> dps, int retries = 2, int nullRetries = 1)
         {
             var cmd = new Dictionary<string, object>
             {
@@ -300,8 +334,17 @@ namespace com.clusterrr.TuyaNet
         /// </summary>
         /// <param name="dpIds">DP identificators to update (can be empty for some devices).</param>
         /// <returns>Dictionary of DP numbers and values.</returns>
+        [Obsolete("Use UpdateDpsAsync")]
         public async Task<Dictionary<int, object>> UpdateDps(params int[] dpIds)
-            => await UpdateDps(dpIds, retries: 5, nullRetries: 1);
+            => await UpdateDpsAsync(dpIds, retries: 5, nullRetries: 1);
+
+        /// <summary>
+        /// Update DP values.
+        /// </summary>
+        /// <param name="dpIds">DP identificators to update (can be empty for some devices).</param>
+        /// <returns>Dictionary of DP numbers and values.</returns>
+        public async Task<Dictionary<int, object>> UpdateDpsAsync(params int[] dpIds)
+            => await UpdateDpsAsync(dpIds, retries: 5, nullRetries: 1);
 
         /// <summary>
         /// Update DP values.
@@ -310,7 +353,18 @@ namespace com.clusterrr.TuyaNet
         /// <param name="retries">Number of retries in case of network error.</param>
         /// <param name="nullRetries">Number of retries in case of empty answer.</param>
         /// <returns>Dictionary of DP numbers and values.</returns>
+        [Obsolete("Use UpdateDpsAsync")]
         public async Task<Dictionary<int, object>> UpdateDps(IEnumerable<int> dpIds, int retries = 5, int nullRetries = 1)
+            => await UpdateDpsAsync(dpIds, retries, nullRetries);
+
+        /// <summary>
+        /// Update DP values.
+        /// </summary>
+        /// <param name="dpIds">DP identificators to update (can be empty for some devices).</param>
+        /// <param name="retries">Number of retries in case of network error.</param>
+        /// <param name="nullRetries">Number of retries in case of empty answer.</param>
+        /// <returns>Dictionary of DP numbers and values.</returns>
+        public async Task<Dictionary<int, object>> UpdateDpsAsync(IEnumerable<int> dpIds, int retries = 5, int nullRetries = 1)
         {
             var cmd = new Dictionary<string, object>
             {
