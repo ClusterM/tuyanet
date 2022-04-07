@@ -242,6 +242,18 @@ Then obtain local key:
 await dev.RefreshLocalKeyAsync()
 ```
 
+## Using the Cloud API
+You can use official [Tuya Cloud API](https://developer.tuya.com/en/docs/cloud/). 
+
+```C#
+Example of [device specifications](https://developer.tuya.com/en/docs/cloud/device-control?id=K95zu01ksols7#title-27-Get%20the%20specifications%20and%20properties%20of%20the%20device%2C%20including%20the%20instruction%20set%20and%20status%20set) request:
+
+var api = new TuyaApi(region: TuyaApi.Region.CentralEurope, accessId: ACCESS_ID, apiSecret: API_SECRET);
+var devspec = await api.RequestAsync(TuyaApi.Method.GET, $"/v1.1/devices/{DEVICE_ID}/specifications");
+```
+
+`devspec` will contain JSON with all device data points with descriptions and possible values.
+
 ## Credits
   * TinyTuya https://github.com/jasonacox/tinytuya by Jason Cox
     For Python version of the library inspired me
