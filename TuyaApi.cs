@@ -196,7 +196,9 @@ namespace com.clusterrr.TuyaNet
         /// </summary>
         private async Task RefreshAccessTokenAsync(bool force = false)
         {
-            if (force || (token == null) || (tokenTime.AddSeconds(token.ExpireTime) >= DateTime.Now))
+            if (force || (token == null) || (tokenTime.AddSeconds(token.ExpireTime) >= DateTime.Now)
+                // For some weird reason token expires sooner than it should
+                || (tokenTime.AddMinutes(30) >= DateTime.Now))
             {
                 var uri = "v1.0/token?grant_type=1";
                 var response = await RequestAsync(Method.GET, uri, noToken: true);
