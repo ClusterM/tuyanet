@@ -130,16 +130,16 @@ namespace com.clusterrr.TuyaNet
                 headers.Add("Signature-Headers", string.Join(":", headers.Keys));
             }
 
-            string payload;
+            string payload = accessId;
             if (noToken)
             {
-                payload = accessId + now;
+                payload += now;
                 headers["secret"] = apiSecret;
             }
             else
             {
                 await RefreshAccessTokenAsync(forceTokenRefresh);
-                payload = accessId + token.AccessToken + now;
+                payload += token.AccessToken + now;
             }
 
             using (var sha256 = SHA256.Create())
