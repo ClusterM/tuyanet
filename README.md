@@ -4,7 +4,7 @@
 
 ## Description
 
-This library controls and monitors [Tuya](https://en.tuya.com/) compatible WiFi Smart Devices (Plugs, Switches, Lights, Window Covers, etc.) using the local area network (LAN). [Tuya](https://en.tuya.com/) devices are designed to communicate with the TuyaCloud but most also expose a local area network API, allowing us to directly control the devices without using the cloud.
+This library controls and monitors [Tuya](https://en.tuya.com/) compatible WiFi Smart Devices (Plugs, Switches, Lights, Window Covers, etc.) using the local area network (LAN). [Tuya](https://en.tuya.com/) devices are designed to communicate with the Tuya Cloud but most also expose a local area network API, allowing us to directly control the devices without using the cloud.
 
 ## Installation
 
@@ -15,14 +15,14 @@ PM> Install-Package TuyaNet
 
 ### Dependencies
 
-* .NETStandard 2.0
+* .NET Standard 2.0
 * Newtonsoft.Json (>= 13.0.1)
 
 ## How communication with Tuya devices works at all
 
 Every Tuya device broadcasts to local network UDP packets with short info about itself. This data is encrypted with AES but the encryption key is the same for every device and it can be easily decrypted. This packet is sent every 5 seconds and contains data with a unique **device ID**, device type ID and protocol version.
 
-Also, every device can accept TCP connection and proceed requests. Every request contains command code and JSON string. JSON string is encrypted with AES using **local key**. This key is assigned by the Tuya cloud server and is unique for each device. So you need to create a Tuya developer account and request this key from the server.
+Also, every device can accept TCP connection and proceed requests. Every request contains command code and JSON string. JSON string is encrypted with AES using **local key**. This key is assigned by the Tuya Cloud server and is unique for each device. So you need to create a Tuya developer account and request this key from the server.
 
 Most requests must contain base JSON values:
 ```JSON
@@ -70,14 +70,14 @@ Don't worry, this library will help you to create requests automatically.
 
 ## How to obtain local key
 
-* Download Smart Life mobile app: [for Android](https://play.google.com/store/apps/details?id=com.tuya.smartlife) or [for iOS](https://apps.apple.com/us/app/smart-life-smart-living/id1115101477)). 
+* Download Smart Life mobile app: [for Android](https://play.google.com/store/apps/details?id=com.tuya.smartlife) or [for iOS](https://apps.apple.com/us/app/smart-life-smart-living/id1115101477). 
 * Register your device using this app.
 * Open [iot.tuya.com](https://iot.tuya.com/), create developer account and log in.
 * Click on `Cloud`
 
   ![image](https://user-images.githubusercontent.com/4236181/139099858-ad859219-ae39-411d-8b6f-7edd39684c90.png)
 
-* Click on `the Create Clout Project` button
+* Click on the `Create Cloud Project` button
 
   ![image](https://user-images.githubusercontent.com/4236181/139100737-7d8f5784-9e2f-492e-a867-b8f6765b3397.png)
 
@@ -97,7 +97,7 @@ Don't worry, this library will help you to create requests automatically.
 
   ![image](https://user-images.githubusercontent.com/4236181/139103834-927c6c02-5860-40d6-829d-5a5dfc9091b6.png)
 
-* Select `Liny Tuya App Account`.
+* Select `Link Tuya App Account`.
 
   ![image](https://user-images.githubusercontent.com/4236181/139103967-45cf78f0-375b-49db-a111-7c8509abc5c0.png)
 
