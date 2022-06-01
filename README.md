@@ -264,5 +264,6 @@ var devspec = await api.RequestAsync(TuyaApi.Method.GET, $"/v1.1/devices/{DEVICE
 
 ## Contacts
 * My site (Russian): https://clusterrr.com
-* Email and PayPal: clusterrr@clusterrr.com
+* Email: clusterrr@clusterrr.com
 * Telegram: https://t.me/Cluster_M
+* Donations: https://www.donationalerts.com/r/clustermeerkat
