@@ -24,7 +24,7 @@ namespace com.clusterrr.TuyaNet
         /// <param name="deviceId">Device ID.</param>
         /// <param name="protocolVersion">Protocol version.</param>
         /// <param name="port">TCP port of device.</param>
-        /// <param name="receiveTimeout">Receive timeout.</param>
+        /// <param name="receiveTimeout">Receive timeout  (msec).</param>
         public TuyaDevice(string ip, string localKey, string deviceId, TuyaProtocolVersion protocolVersion = TuyaProtocolVersion.V33, int port = 6668, int receiveTimeout = 250)
         {
             IP = ip;
@@ -74,6 +74,14 @@ namespace com.clusterrr.TuyaNet
         /// Receive timeout.
         /// </summary>
         public int ReceiveTimeout { get; set; }
+        /// <summary>
+        /// Network error retry interval (msec)
+        /// </summary>
+        public int NetworkErrorRetriesInterval { get; set; } = 100;
+        /// <summary>
+        /// Empty responce retry interval (msec)
+        /// </summary>
+        public int NullRetriesInterval { get; set; } = 0;
         /// <summary>
         /// Permanent connection (connect and stay connected).
         /// </summary>
@@ -139,20 +147,22 @@ namespace com.clusterrr.TuyaNet
         /// </summary>
         /// <param name="command">Tuya command ID.</param>
         /// <param name="json">JSON string.</param>
-        /// <param name="retries">Number of retries in case of network error.</param>
-        /// <param name="nullRetries">Number of retries in case of empty answer.</param>
+        /// <param name="retries">Number of retries in case of network error (default - 2).</param>
+        /// <param name="nullRetries">Number of retries in case of empty answer (default - 1).</param>
+        /// <param name="overrideRecvTimeout">Override receive timeout (default - ReceiveTimeout property).</param>
         /// <returns>Parsed and decrypred received data as instance of TuyaLocalResponse.</returns>
-        public async Task<TuyaLocalResponse> SendAsync(TuyaCommand command, string json, int retries = 2, int nullRetries = 1)
-            => DecodeResponse(await SendAsync(EncodeRequest(command, json), retries, nullRetries));
+        public async Task<TuyaLocalResponse> SendAsync(TuyaCommand command, string json, int retries = 2, int nullRetries = 1, int? overrideRecvTimeout = null, CancellationToken cancellationToken = default)
+            => DecodeResponse(await SendAsync(EncodeRequest(command, json), retries, nullRetries, overrideRecvTimeout, cancellationToken));
 
         /// <summary>
         /// Sends raw data over to device and read response.
         /// </summary>
         /// <param name="data">Raw data to send.</param>
-        /// <param name="retries">Number of retries in case of network error.</param>
-        /// <param name="nullRetries">Number of retries in case of empty answer.</param>
+        /// <param name="retries">Number of retries in case of network error (default - 2).</param>
+        /// <param name="nullRetries">Number of retries in case of empty answer (default - 1).</param>
+        /// <param name="overrideRecvTimeout">Override receive timeout (default - ReceiveTimeout property).</param>
         /// <returns>Received data (raw).</returns>
-        public async Task<byte[]> SendAsync(byte[] data, int retries = 2, int nullRetries = 1)
+        public async Task<byte[]> SendAsync(byte[] data, int retries = 2, int nullRetries = 1, int? overrideRecvTimeout = null, CancellationToken cancellationToken = default)
         {
             Exception lastException = null;
             while (retries-- > 0)
@@ -168,14 +178,18 @@ namespace com.clusterrr.TuyaNet
                     if (client == null)
                         client = new TcpClient(IP, Port);
                     var stream = client.GetStream();
-                    await stream.WriteAsync(data, 0, data.Length).ConfigureAwait(false);
-                    return await ReceiveAsync(stream, nullRetries);
+                    await stream.WriteAsync(data, 0, data.Length, cancellationToken).ConfigureAwait(false);
+                    return await ReceiveAsync(stream, nullRetries, overrideRecvTimeout, cancellationToken);
                 }
                 catch (Exception ex) when (ex is IOException or TimeoutException)
                 {
                     // sockets sometimes drop the connection unexpectedly, so let's 
                     // retry at least once
                     lastException = ex;
+                }
+                catch (Exception ex)
+                {
+                    throw ex;
                 }
                 finally
                 {
@@ -186,12 +200,12 @@ namespace com.clusterrr.TuyaNet
                         client = null;
                     }
                 }
-                await Task.Delay(500);
+                await Task.Delay(NetworkErrorRetriesInterval, cancellationToken);
             }
             throw lastException;
         }
 
-        private async Task<byte[]> ReceiveAsync(NetworkStream stream, int nullRetries = 1)
+        private async Task<byte[]> ReceiveAsync(NetworkStream stream, int nullRetries = 1, int? overrideRecvTimeout = null, CancellationToken cancellationToken = default)
         {
             byte[] result;
             byte[] buffer = new byte[1024];
@@ -200,16 +214,16 @@ namespace com.clusterrr.TuyaNet
                 int length = buffer.Length;
                 while ((ms.Length < 16) || ((length = BitConverter.ToInt32(TuyaParser.BigEndian(ms.ToArray().Skip(12).Take(4)).ToArray(), 0) + 16) < ms.Length))
                 {
-                    var cancellationTokenSource = new CancellationTokenSource();
-                    var readTask = stream.ReadAsync(buffer, 0, length, cancellationToken: cancellationTokenSource.Token);
-                    var timeoutTask = Task.Delay(ReceiveTimeout, cancellationToken: cancellationTokenSource.Token);
+                    var timeoutCancellationTokenSource = new CancellationTokenSource();
+                    var readTask = stream.ReadAsync(buffer, 0, length, cancellationToken: cancellationToken);
+                    var timeoutTask = Task.Delay(overrideRecvTimeout ?? ReceiveTimeout, cancellationToken: timeoutCancellationTokenSource.Token);
                     var t = await Task.WhenAny(readTask, timeoutTask).ConfigureAwait(false);
-                    cancellationTokenSource.Cancel();
+                    timeoutCancellationTokenSource.Cancel();
                     int bytes = 0;
                     if (t == timeoutTask)
                     {
                         if (stream.DataAvailable)
-                            bytes = await stream.ReadAsync(buffer, 0, length);
+                            bytes = await stream.ReadAsync(buffer, 0, length, cancellationToken);
                         else
                             throw new TimeoutException();
                     }
@@ -225,7 +239,8 @@ namespace com.clusterrr.TuyaNet
             {
                 try
                 {
-                    result = await ReceiveAsync(stream, nullRetries - 1);
+                    await Task.Delay(NullRetriesInterval, cancellationToken);
+                    result = await ReceiveAsync(stream, nullRetries - 1, overrideRecvTimeout: overrideRecvTimeout, cancellationToken);
                 }
                 catch { }
             }
@@ -235,23 +250,14 @@ namespace com.clusterrr.TuyaNet
         /// <summary>
         /// Requests current DPs status.
         /// </summary>
-        /// <param name="retries">Number of retries in case of network error.</param>
-        /// <param name="nullRetries">Number of retries in case of empty answer.</param>
+        /// <param name="retries">Number of retries in case of network error (default - 2).</param>
+        /// <param name="nullRetries">Number of retries in case of empty answer (default - 1).</param>
+        /// <param name="overrideRecvTimeout">Override receive timeout (default - ReceiveTimeout property).</param>
         /// <returns>Dictionary of DP numbers and values.</returns>
-        [Obsolete("Use GetDpsAsync")]
-        public async Task<Dictionary<int, object>> GetDps(int retries = 5, int nullRetries = 1)
-            => await GetDpsAsync(retries, nullRetries);
-
-        /// <summary>
-        /// Requests current DPs status.
-        /// </summary>
-        /// <param name="retries">Number of retries in case of network error.</param>
-        /// <param name="nullRetries">Number of retries in case of empty answer.</param>
-        /// <returns>Dictionary of DP numbers and values.</returns>
-        public async Task<Dictionary<int, object>> GetDpsAsync(int retries = 5, int nullRetries = 1)
+        public async Task<Dictionary<int, object>> GetDpsAsync(int retries = 5, int nullRetries = 1, int? overrideRecvTimeout = null, CancellationToken cancellationToken = default)
         {
             var requestJson = FillJson(null);
-            var response = await SendAsync(TuyaCommand.DP_QUERY, requestJson, retries, nullRetries);
+            var response = await SendAsync(TuyaCommand.DP_QUERY, requestJson, retries, nullRetries, overrideRecvTimeout, cancellationToken);
             if (string.IsNullOrEmpty(response.JSON))
                 throw new InvalidDataException("Response is empty");
             var root = JObject.Parse(response.JSON);
@@ -264,56 +270,24 @@ namespace com.clusterrr.TuyaNet
         /// </summary>
         /// <param name="dp">DP number.</param>
         /// <param name="value">Value.</param>
-        /// <param name="retries">Number of retries in case of network error.</param>
-        /// <param name="nullRetries">Number of retries in case of empty answer.</param>
+        /// <param name="retries">Number of retries in case of network error (default - 2).</param>
+        /// <param name="nullRetries">Number of retries in case of empty answer (default - 1).</param>
+        /// <param name="overrideRecvTimeout">Override receive timeout (default - ReceiveTimeout property).</param>
+        /// <param name="allowEmptyResponse">Do not throw exception on empty Response</param>
         /// <returns>Dictionary of DP numbers and values.</returns>
-        [Obsolete("Use SetDpAsync")]
-        public async Task<Dictionary<int, object>> SetDps(int dp, object value, int retries = 2, int nullRetries = 1)
-            => await SetDpsAsync(new Dictionary<int, object> { { dp, value } }, retries, nullRetries);
-
-        /// <summary>
-        /// Sets single DP to specified value.
-        /// </summary>
-        /// <param name="dp">DP number.</param>
-        /// <param name="value">Value.</param>
-        /// <param name="retries">Number of retries in case of network error.</param>
-        /// <param name="nullRetries">Number of retries in case of empty answer.</param>
-        /// <returns>Dictionary of DP numbers and values.</returns>
-        [Obsolete("Use SetDpAsync")]
-        public async Task<Dictionary<int, object>> SetDp(int dp, object value, int retries = 2, int nullRetries = 1)
-            => await SetDpAsync(dp, value, retries, nullRetries);
-
-        /// <summary>
-        /// Sets single DP to specified value.
-        /// </summary>
-        /// <param name="dp">DP number.</param>
-        /// <param name="value">Value.</param>
-        /// <param name="retries">Number of retries in case of network error.</param>
-        /// <param name="nullRetries">Number of retries in case of empty answer.</param>
-        /// <returns>Dictionary of DP numbers and values.</returns>
-        public async Task<Dictionary<int, object>> SetDpAsync(int dp, object value, int retries = 2, int nullRetries = 1)
-            => await SetDpsAsync(new Dictionary<int, object> { { dp, value } }, retries, nullRetries);
+        public async Task<Dictionary<int, object>> SetDpAsync(int dp, object value, int retries = 2, int nullRetries = 1, int? overrideRecvTimeout = null, bool allowEmptyResponse = false, CancellationToken cancellationToken = default)
+            => await SetDpsAsync(new Dictionary<int, object> { { dp, value } }, retries, nullRetries, overrideRecvTimeout, allowEmptyResponse, cancellationToken);
 
         /// <summary>
         /// Sets DPs to specified value.
         /// </summary>
         /// <param name="dps">Dictionary of DP numbers and values to set.</param>
-        /// <param name="retries">Number of retries in case of network error.</param>
-        /// <param name="nullRetries">Number of retries in case of empty answer.</param>
+        /// <param name="retries">Number of retries in case of network error (default - 2).</param>
+        /// <param name="nullRetries">Number of retries in case of empty answer (default - 1).</param>
+        /// <param name="overrideRecvTimeout">Override receive timeout (default - ReceiveTimeout property).</param>
+        /// <param name="allowEmptyResponse">Do not throw exception on empty Response</param>
         /// <returns>Dictionary of DP numbers and values.</returns>
-        [Obsolete("Use SetDpsAsync")]
-        public async Task<Dictionary<int, object>> SetDps(Dictionary<int, object> dps, int retries = 2, int nullRetries = 1)
-            => await SetDpsAsync(dps, retries, nullRetries);
-
-
-        /// <summary>
-        /// Sets DPs to specified value.
-        /// </summary>
-        /// <param name="dps">Dictionary of DP numbers and values to set.</param>
-        /// <param name="retries">Number of retries in case of network error.</param>
-        /// <param name="nullRetries">Number of retries in case of empty answer.</param>
-        /// <returns>Dictionary of DP numbers and values.</returns>
-        public async Task<Dictionary<int, object>> SetDpsAsync(Dictionary<int, object> dps, int retries = 2, int nullRetries = 1)
+        public async Task<Dictionary<int, object>> SetDpsAsync(Dictionary<int, object> dps, int retries = 2, int nullRetries = 1, int? overrideRecvTimeout = null, bool allowEmptyResponse = false, CancellationToken cancellationToken = default)
         {
             var cmd = new Dictionary<string, object>
             {
@@ -321,9 +295,14 @@ namespace com.clusterrr.TuyaNet
             };
             string requestJson = JsonConvert.SerializeObject(cmd);
             requestJson = FillJson(requestJson);
-            var response = await SendAsync(TuyaCommand.CONTROL, requestJson, retries, nullRetries);
+            var response = await SendAsync(TuyaCommand.CONTROL, requestJson, retries, nullRetries, overrideRecvTimeout, cancellationToken);
             if (string.IsNullOrEmpty(response.JSON))
-                throw new InvalidDataException("Response is empty");
+            {
+                if (!allowEmptyResponse)
+                    throw new InvalidDataException("Response is empty");
+                else
+                    return null;
+            }
             var root = JObject.Parse(response.JSON);
             var newDps = JsonConvert.DeserializeObject<Dictionary<string, object>>(root.GetValue("dps").ToString());
             return newDps.ToDictionary(kv => int.Parse(kv.Key), kv => kv.Value);
@@ -333,38 +312,11 @@ namespace com.clusterrr.TuyaNet
         /// Update DP values.
         /// </summary>
         /// <param name="dpIds">DP identificators to update (can be empty for some devices).</param>
+        /// <param name="retries">Number of retries in case of network error (default - 2).</param>
+        /// <param name="nullRetries">Number of retries in case of empty answer (default - 1).</param>
+        /// <param name="overrideRecvTimeout">Override receive timeout (default - ReceiveTimeout property).</param>
         /// <returns>Dictionary of DP numbers and values.</returns>
-        [Obsolete("Use UpdateDpsAsync")]
-        public async Task<Dictionary<int, object>> UpdateDps(params int[] dpIds)
-            => await UpdateDpsAsync(dpIds, retries: 5, nullRetries: 1);
-
-        /// <summary>
-        /// Update DP values.
-        /// </summary>
-        /// <param name="dpIds">DP identificators to update (can be empty for some devices).</param>
-        /// <returns>Dictionary of DP numbers and values.</returns>
-        public async Task<Dictionary<int, object>> UpdateDpsAsync(params int[] dpIds)
-            => await UpdateDpsAsync(dpIds, retries: 5, nullRetries: 1);
-
-        /// <summary>
-        /// Update DP values.
-        /// </summary>
-        /// <param name="dpIds">DP identificators to update (can be empty for some devices).</param>
-        /// <param name="retries">Number of retries in case of network error.</param>
-        /// <param name="nullRetries">Number of retries in case of empty answer.</param>
-        /// <returns>Dictionary of DP numbers and values.</returns>
-        [Obsolete("Use UpdateDpsAsync")]
-        public async Task<Dictionary<int, object>> UpdateDps(IEnumerable<int> dpIds, int retries = 5, int nullRetries = 1)
-            => await UpdateDpsAsync(dpIds, retries, nullRetries);
-
-        /// <summary>
-        /// Update DP values.
-        /// </summary>
-        /// <param name="dpIds">DP identificators to update (can be empty for some devices).</param>
-        /// <param name="retries">Number of retries in case of network error.</param>
-        /// <param name="nullRetries">Number of retries in case of empty answer.</param>
-        /// <returns>Dictionary of DP numbers and values.</returns>
-        public async Task<Dictionary<int, object>> UpdateDpsAsync(IEnumerable<int> dpIds, int retries = 5, int nullRetries = 1)
+        public async Task<Dictionary<int, object>> UpdateDpsAsync(IEnumerable<int> dpIds, int retries = 5, int nullRetries = 1, int? overrideRecvTimeout = null, CancellationToken cancellationToken = default)
         {
             var cmd = new Dictionary<string, object>
             {
@@ -372,7 +324,7 @@ namespace com.clusterrr.TuyaNet
             };
             string requestJson = JsonConvert.SerializeObject(cmd);
             requestJson = FillJson(requestJson);
-            var response = await SendAsync(TuyaCommand.UPDATE_DPS, requestJson, retries, nullRetries);
+            var response = await SendAsync(TuyaCommand.UPDATE_DPS, requestJson, retries, nullRetries, overrideRecvTimeout, cancellationToken);
             if (string.IsNullOrEmpty(response.JSON))
                 return new Dictionary<int, object>();
             var root = JObject.Parse(response.JSON);
@@ -384,12 +336,12 @@ namespace com.clusterrr.TuyaNet
         /// Get current local key from Tuya Cloud API
         /// </summary>
         /// <param name="forceTokenRefresh">Refresh access token even it's not expired.</param>
-        public async Task RefreshLocalKeyAsync(bool forceTokenRefresh = false)
+        public async Task RefreshLocalKeyAsync(bool forceTokenRefresh = false, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(accessId)) throw new ArgumentException("Access ID is not specified", "accessId");
             if (string.IsNullOrEmpty(apiSecret)) throw new ArgumentException("API secret is not specified", "apiSecret");
             var api = new TuyaApi(region, accessId, apiSecret);
-            var deviceInfo = await api.GetDeviceInfoAsync(DeviceId, forceTokenRefresh: forceTokenRefresh);
+            var deviceInfo = await api.GetDeviceInfoAsync(DeviceId, forceTokenRefresh: forceTokenRefresh, cancellationToken);
             LocalKey = deviceInfo.LocalKey;
         }
 

@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace com.clusterrr.TuyaNet
@@ -113,7 +114,7 @@ namespace com.clusterrr.TuyaNet
         /// <param name="noToken">Execute query without token.</param>
         /// <param name="forceTokenRefresh">Refresh access token even it's not expired.</param>
         /// <returns>JSON string with response.</returns>
-        public async Task<string> RequestAsync(Method method, string uri, string body = null, Dictionary<string, string> headers = null, bool noToken = false, bool forceTokenRefresh = false)
+        public async Task<string> RequestAsync(Method method, string uri, string body = null, Dictionary<string, string> headers = null, bool noToken = false, bool forceTokenRefresh = false, CancellationToken cancellationToken = default)
         {
             while (uri.StartsWith("/")) uri = uri.Substring(1);
             var urlHost = RegionToHost(region);
@@ -138,7 +139,7 @@ namespace com.clusterrr.TuyaNet
             }
             else
             {
-                await RefreshAccessTokenAsync(forceTokenRefresh);
+                await RefreshAccessTokenAsync(forceTokenRefresh, cancellationToken);
                 payload += token.AccessToken + now;
             }
 
@@ -169,7 +170,7 @@ namespace com.clusterrr.TuyaNet
                 {
                     Method.GET => HttpMethod.Get,
                     Method.POST => HttpMethod.Post,
-                    Method.PUT => HttpMethod.Delete,
+                    Method.PUT => HttpMethod.Put,
                     Method.DELETE => HttpMethod.Delete,
                     _ => throw new NotSupportedException($"Unknow method - {method}")
                 },
@@ -180,7 +181,7 @@ namespace com.clusterrr.TuyaNet
             if (body != null)
                 httpRequestMessage.Content = new StringContent(body, Encoding.UTF8, "application/json");
 
-            using (var response = await httpClient.SendAsync(httpRequestMessage).ConfigureAwait(false))
+            using (var response = await httpClient.SendAsync(httpRequestMessage, cancellationToken).ConfigureAwait(false))
             {
                 var responseString = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                 var root = JObject.Parse(responseString);
@@ -194,14 +195,14 @@ namespace com.clusterrr.TuyaNet
         /// <summary>
         /// Request access token if it's expired or not requested yet.
         /// </summary>
-        private async Task RefreshAccessTokenAsync(bool force = false)
+        private async Task RefreshAccessTokenAsync(bool force = false, CancellationToken cancellationToken = default)
         {
             if (force || (token == null) || (tokenTime.AddSeconds(token.ExpireTime) >= DateTime.Now)
                 // For some weird reason token expires sooner than it should
                 || (tokenTime.AddMinutes(30) >= DateTime.Now))
             {
                 var uri = "v1.0/token?grant_type=1";
-                var response = await RequestAsync(Method.GET, uri, noToken: true);
+                var response = await RequestAsync(Method.GET, uri, noToken: true, cancellationToken: cancellationToken);
                 token = JsonConvert.DeserializeObject<TuyaToken>(response);
                 tokenTime = DateTime.Now;
             }
@@ -213,10 +214,10 @@ namespace com.clusterrr.TuyaNet
         /// <param name="deviceId">Device ID.</param>
         /// <param name="forceTokenRefresh">Refresh access token even it's not expired.</param>
         /// <returns>Device info.</returns>
-        public async Task<TuyaDeviceApiInfo> GetDeviceInfoAsync(string deviceId, bool forceTokenRefresh = false)
+        public async Task<TuyaDeviceApiInfo> GetDeviceInfoAsync(string deviceId, bool forceTokenRefresh = false, CancellationToken cancellationToken = default)
         {
             var uri = $"v1.0/devices/{deviceId}";
-            var response = await RequestAsync(Method.GET, uri, forceTokenRefresh: forceTokenRefresh);
+            var response = await RequestAsync(Method.GET, uri, forceTokenRefresh: forceTokenRefresh, cancellationToken: cancellationToken);
             var device = JsonConvert.DeserializeObject<TuyaDeviceApiInfo>(response);
             return device;
         }
@@ -227,11 +228,11 @@ namespace com.clusterrr.TuyaNet
         /// <param name="anyDeviceId">ID of any registered device.</param>
         /// <param name="forceTokenRefresh">Refresh access token even it's not expired.</param>
         /// <returns>Array of devices info.</returns>
-        public async Task<TuyaDeviceApiInfo[]> GetAllDevicesInfoAsync(string anyDeviceId, bool forceTokenRefresh = false)
+        public async Task<TuyaDeviceApiInfo[]> GetAllDevicesInfoAsync(string anyDeviceId, bool forceTokenRefresh = false, CancellationToken cancellationToken = default)
         {
-            var userId = (await GetDeviceInfoAsync(anyDeviceId, forceTokenRefresh: forceTokenRefresh)).UserId;
+            var userId = (await GetDeviceInfoAsync(anyDeviceId, forceTokenRefresh: forceTokenRefresh, cancellationToken: cancellationToken)).UserId;
             var uri = $"v1.0/users/{userId}/devices";
-            var response = await RequestAsync(Method.GET, uri, forceTokenRefresh: false); // Token already refreshed
+            var response = await RequestAsync(Method.GET, uri, forceTokenRefresh: false, cancellationToken: cancellationToken); // Token already refreshed
             var devices = JsonConvert.DeserializeObject<TuyaDeviceApiInfo[]>(response);
             return devices;
         }
