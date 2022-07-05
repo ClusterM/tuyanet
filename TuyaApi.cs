@@ -113,6 +113,7 @@ namespace com.clusterrr.TuyaNet
         /// <param name="headers">Additional headers.</param>
         /// <param name="noToken">Execute query without token.</param>
         /// <param name="forceTokenRefresh">Refresh access token even it's not expired.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>JSON string with response.</returns>
         public async Task<string> RequestAsync(Method method, string uri, string body = null, Dictionary<string, string> headers = null, bool noToken = false, bool forceTokenRefresh = false, CancellationToken cancellationToken = default)
         {
@@ -213,6 +214,7 @@ namespace com.clusterrr.TuyaNet
         /// </summary>
         /// <param name="deviceId">Device ID.</param>
         /// <param name="forceTokenRefresh">Refresh access token even it's not expired.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Device info.</returns>
         public async Task<TuyaDeviceApiInfo> GetDeviceInfoAsync(string deviceId, bool forceTokenRefresh = false, CancellationToken cancellationToken = default)
         {
@@ -227,6 +229,7 @@ namespace com.clusterrr.TuyaNet
         /// </summary>
         /// <param name="anyDeviceId">ID of any registered device.</param>
         /// <param name="forceTokenRefresh">Refresh access token even it's not expired.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Array of devices info.</returns>
         public async Task<TuyaDeviceApiInfo[]> GetAllDevicesInfoAsync(string anyDeviceId, bool forceTokenRefresh = false, CancellationToken cancellationToken = default)
         {
