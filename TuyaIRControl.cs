@@ -22,9 +22,25 @@ namespace com.clusterrr.TuyaNet
         /// <param name="deviceId">Device ID.</param>
         /// <param name="protocolVersion">Protocol version.</param>
         /// <param name="port">TCP port of device.</param>
-        /// <param name="receiveTimeout">Receive timeout  (msec).</param>
+        /// <param name="receiveTimeout">Receive timeout (msec).</param>
         public TuyaIRControl(string ip, string localKey, string deviceId, TuyaProtocolVersion protocolVersion = TuyaProtocolVersion.V33, int port = 6668, int receiveTimeout = 250)
             : base(ip, localKey, deviceId, protocolVersion, port, receiveTimeout)
+        {
+        }
+
+        /// <summary>
+        /// Creates a new instance of the TuyaDevice class.
+        /// </summary>
+        /// <param name="ip">IP address of device.</param>
+        /// <param name="region">Region to access Cloud API.</param>
+        /// <param name="accessId">Access ID to access Cloud API.</param>
+        /// <param name="apiSecret">API secret to access Cloud API.</param>
+        /// <param name="deviceId">Device ID.</param>
+        /// <param name="protocolVersion">Protocol version.</param>
+        /// <param name="port">TCP port of device.</param>
+        /// <param name="receiveTimeout">Receive timeout (msec).</param> 
+        public TuyaIRControl(string ip, TuyaApi.Region region, string accessId, string apiSecret, string deviceId, TuyaProtocolVersion protocolVersion = TuyaProtocolVersion.V33, int port = 6668, int receiveTimeout = 250)
+            : base(ip, region, accessId, apiSecret, deviceId, protocolVersion, port, receiveTimeout)
         {
         }
 
@@ -34,7 +50,7 @@ namespace com.clusterrr.TuyaNet
         /// <param name="timeout">Learing timeout, you should press RC button during this interval.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Button code as Base64 string.</returns>
-        public async Task<string> GetButtonCodeAsync(int timeout, CancellationToken cancellationToken = default)
+        public async Task<string> GetButtonCodeAsync(int timeout, int retries = 2, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -59,10 +75,11 @@ namespace com.clusterrr.TuyaNet
                     var response = await SetDpsAsync(new Dictionary<int, object>() { { 201, subCmdJson } }, overrideRecvTimeout: timeout, allowEmptyResponse: true, cancellationToken: cancellationToken);
                     if (response != null)
                     {
-                        return response[202].ToString();
+                        return "1" + response[202].ToString();
                     }
                 }
-            } finally
+            }
+            finally
             {
                 try
                 {
@@ -82,15 +99,19 @@ namespace com.clusterrr.TuyaNet
         /// </summary>
         /// <param name="buttonCode">Button code in Base64 encoding.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        public async Task SendButtonCodeAsync(string buttonCode, CancellationToken cancellationToken = default)
+        public async Task SendButtonCodeAsync(string buttonCode, int retries = 2, int? overrideRecvTimeout = null, CancellationToken cancellationToken = default)
         {
             var subCmd = new Dictionary<string, object>()
             {
                 { "control", "send_ir" },
-                { "key1", buttonCode }
+                { "head", "" },
+                { "key1", buttonCode },
+                { "type", 0 },
+                { "delay", 300 }
             };
             var subCmdJson = JsonConvert.SerializeObject(subCmd);
-            await SetDpsAsync(new Dictionary<int, object>() { { 201, subCmdJson } }, nullRetries: 0, allowEmptyResponse: true, cancellationToken: cancellationToken);
+            await SetDpsAsync(new Dictionary<int, object>() { { 201, subCmdJson } }, retries: retries,
+                nullRetries: 0, overrideRecvTimeout: overrideRecvTimeout, allowEmptyResponse: true, cancellationToken: cancellationToken);
         }
 
         /// <summary>
@@ -100,7 +121,16 @@ namespace com.clusterrr.TuyaNet
         /// <returns>Pulses/gaps length in microsecods.</returns>
         public static ushort[] Base64ToPulses(string codeBase64)
         {
-            var bytes = Convert.FromBase64String(codeBase64);
+            byte[] bytes;
+            if (codeBase64.StartsWith("1")) codeBase64 = codeBase64.Substring(1);
+            try
+            {
+                bytes = Convert.FromBase64String(codeBase64);
+            }
+            catch
+            {
+                bytes = Convert.FromBase64String("1" + codeBase64);
+            }
             var pulses = Enumerable.Range(2, bytes.Length - 3)
                 .Where(x => x % 2 == 0)
                 .Select(x => (ushort)((bytes[x] << 8 | bytes[x + 1]) / 4))
@@ -119,7 +149,7 @@ namespace com.clusterrr.TuyaNet
             var code64 = Enumerable.Concat<UInt16>(new ushort[] { 0xd500 /* Uknown value*/ }, pulsesMult);
             var code64b = code64.SelectMany(x => new byte[] { (byte)((x >> 8) & 0xFF), (byte)(x & 0xFF) });
             code64b = Enumerable.Concat<byte>(code64b, new byte[] { 8 }); // Unknown padding byte
-            var codeBase64 = Convert.ToBase64String(code64b.ToArray());
+            var codeBase64 = "1" + Convert.ToBase64String(code64b.ToArray());
             return codeBase64;
         }
 
