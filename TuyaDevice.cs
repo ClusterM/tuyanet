@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using com.clusterrr.SemaphoreLock;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -24,7 +25,7 @@ namespace com.clusterrr.TuyaNet
         /// <param name="deviceId">Device ID.</param>
         /// <param name="protocolVersion">Protocol version.</param>
         /// <param name="port">TCP port of device.</param>
-        /// <param name="receiveTimeout">Receive timeout  (msec).</param>
+        /// <param name="receiveTimeout">Receive timeout (msec).</param>
         public TuyaDevice(string ip, string localKey, string deviceId, TuyaProtocolVersion protocolVersion = TuyaProtocolVersion.V33, int port = 6668, int receiveTimeout = 250)
         {
             IP = ip;
@@ -37,6 +38,17 @@ namespace com.clusterrr.TuyaNet
             ReceiveTimeout = receiveTimeout;
         }
 
+        /// <summary>
+        /// Creates a new instance of the TuyaDevice class.
+        /// </summary>
+        /// <param name="ip">IP address of device.</param>
+        /// <param name="region">Region to access Cloud API.</param>
+        /// <param name="accessId">Access ID to access Cloud API.</param>
+        /// <param name="apiSecret">API secret to access Cloud API.</param>
+        /// <param name="deviceId">Device ID.</param>
+        /// <param name="protocolVersion">Protocol version.</param>
+        /// <param name="port">TCP port of device.</param>
+        /// <param name="receiveTimeout">Receive timeout (msec).</param> 
         public TuyaDevice(string ip, TuyaApi.Region region, string accessId, string apiSecret, string deviceId, TuyaProtocolVersion protocolVersion = TuyaProtocolVersion.V33, int port = 6668, int receiveTimeout = 250)
         {
             IP = ip;
@@ -71,6 +83,10 @@ namespace com.clusterrr.TuyaNet
         /// </summary>
         public TuyaProtocolVersion ProtocolVersion { get; set; }
         /// <summary>
+        /// Connection timeout.
+        /// </summary>
+        public int ConnectionTimeout { get; set; } = 500;
+        /// <summary>
         /// Receive timeout.
         /// </summary>
         public int ReceiveTimeout { get; set; }
@@ -91,6 +107,7 @@ namespace com.clusterrr.TuyaNet
         private TuyaApi.Region region;
         private string accessId;
         private string apiSecret;
+        private SemaphoreSlim sem = new SemaphoreSlim(1);
 
         /// <summary>
         /// Fills JSON string with base fields required by most commands.
@@ -177,13 +194,18 @@ namespace com.clusterrr.TuyaNet
                 }
                 try
                 {
-                    if (client == null)
-                        client = new TcpClient(IP, Port);
-                    var stream = client.GetStream();
-                    await stream.WriteAsync(data, 0, data.Length, cancellationToken).ConfigureAwait(false);
-                    return await ReceiveAsync(stream, nullRetries, overrideRecvTimeout, cancellationToken);
+                    using (await sem.WaitDisposableAsync(cancellationToken))
+                    {
+                        if (client == null)
+                            client = new TcpClient();
+                        if (!client.ConnectAsync(IP, Port).Wait(ConnectionTimeout))
+                            throw new IOException("Connection timeout");
+                        var stream = client.GetStream();
+                        await stream.WriteAsync(data, 0, data.Length, cancellationToken).ConfigureAwait(false);
+                        return await ReceiveAsync(stream, nullRetries, overrideRecvTimeout, cancellationToken);
+                    }
                 }
-                catch (Exception ex) when (ex is IOException or TimeoutException)
+                catch (Exception ex) when (ex is IOException or TimeoutException or SocketException)
                 {
                     // sockets sometimes drop the connection unexpectedly, so let's 
                     // retry at least once
