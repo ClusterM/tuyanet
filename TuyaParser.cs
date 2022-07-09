@@ -41,6 +41,7 @@ namespace com.clusterrr.TuyaNet
 
         internal static byte[] Decrypt(byte[] data, byte[] key)
         {
+            if (data.Length == 0) return data;
             var aes = new AesManaged()
             {
                 Mode = CipherMode.ECB,
