@@ -75,7 +75,8 @@ namespace com.clusterrr.TuyaNet
                     var response = await SetDpsAsync(new Dictionary<int, object>() { { 201, subCmdJson } }, overrideRecvTimeout: timeout, allowEmptyResponse: true, cancellationToken: cancellationToken);
                     if (response != null)
                     {
-                        return "1" + response[202].ToString();
+                        var result = response[202].ToString();
+                        return result;
                     }
                 }
             }
@@ -105,9 +106,9 @@ namespace com.clusterrr.TuyaNet
             {
                 { "control", "send_ir" },
                 { "head", "" },
-                { "key1", buttonCode },
+                { "key1", buttonCode.Length % 4 == 0 ? "1" + buttonCode : buttonCode }, // code need to be padded with "1" (wtf?)
                 { "type", 0 },
-                { "delay", 300 }
+                { "delay", 0 }
             };
             var subCmdJson = JsonConvert.SerializeObject(subCmd);
             await SetDpsAsync(new Dictionary<int, object>() { { 201, subCmdJson } }, retries: retries,
@@ -121,19 +122,14 @@ namespace com.clusterrr.TuyaNet
         /// <returns>Pulses/gaps length in microsecods.</returns>
         public static ushort[] Base64ToPulses(string codeBase64)
         {
-            byte[] bytes;
-            if (codeBase64.StartsWith("1")) codeBase64 = codeBase64.Substring(1);
-            try
-            {
-                bytes = Convert.FromBase64String(codeBase64);
-            }
-            catch
-            {
-                bytes = Convert.FromBase64String("1" + codeBase64);
-            }
-            var pulses = Enumerable.Range(2, bytes.Length - 3)
+            var bytes = Convert.FromBase64String(
+                (codeBase64.Length % 4 == 1 && codeBase64.StartsWith("1"))
+                    ? codeBase64.Substring(1) // code can be padded with "1" (wtf?)
+                    : codeBase64
+            );
+            var pulses = Enumerable.Range(0, bytes.Length)
                 .Where(x => x % 2 == 0)
-                .Select(x => (ushort)((bytes[x] << 8 | bytes[x + 1]) / 4))
+                .Select(x => (ushort)((bytes[x] | bytes[x + 1] << 8)))
                 .ToArray();
             return pulses;
         }
@@ -145,11 +141,8 @@ namespace com.clusterrr.TuyaNet
         /// <returns>Base64 encoded button code.</returns>
         public static string PulsesToBase64(ushort[] pulses)
         {
-            var pulsesMult = pulses.Select(x => (ushort)(x * 4)); // Convert 1 us to 250ns
-            var code64 = Enumerable.Concat<UInt16>(new ushort[] { 0xd500 /* Uknown value*/ }, pulsesMult);
-            var code64b = code64.SelectMany(x => new byte[] { (byte)((x >> 8) & 0xFF), (byte)(x & 0xFF) });
-            code64b = Enumerable.Concat<byte>(code64b, new byte[] { 8 }); // Unknown padding byte
-            var codeBase64 = "1" + Convert.ToBase64String(code64b.ToArray());
+            var bytes = pulses.SelectMany(x => new byte[] { (byte)(x & 0xFF), (byte)((x >> 8) & 0xFF) });
+            var codeBase64 = Convert.ToBase64String(bytes.ToArray());
             return codeBase64;
         }
 
