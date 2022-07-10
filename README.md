@@ -242,12 +242,26 @@ Then obtain local key:
 await dev.RefreshLocalKeyAsync()
 ```
 
+### IR Remote Control
+
+Since version 1.0.3 you can control infrared remote controls. There is TuyaIRControl class for it. You can learn button from real remote control using `GetButtonCodeAsync` method (it returns Base64-encoded pulses sequences) and simulate button press using `SendButtonCodeAsync` method.
+Example:
+```C#
+string codeBase64 = await ir.GetButtonCodeAsync(10000, retries: 1);
+Console.WriteLine($"Button code learned: {codeBase64}");
+while (true)
+{
+    await ir.SendButtonCodeAsync(codeBase64);
+    Console.WriteLine("Button press simulated");
+    await Task.Delay(1000);
+}
+```
+
 ## Using the Cloud API
 You can use official [Tuya Cloud API](https://developer.tuya.com/en/docs/cloud/). 
 
-```C#
 Example of [device specifications](https://developer.tuya.com/en/docs/cloud/device-control?id=K95zu01ksols7#title-27-Get%20the%20specifications%20and%20properties%20of%20the%20device%2C%20including%20the%20instruction%20set%20and%20status%20set) request:
-
+```C#
 var api = new TuyaApi(region: TuyaApi.Region.CentralEurope, accessId: ACCESS_ID, apiSecret: API_SECRET);
 var devspec = await api.RequestAsync(TuyaApi.Method.GET, $"/v1.1/devices/{DEVICE_ID}/specifications");
 ```
