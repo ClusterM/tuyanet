@@ -231,17 +231,6 @@ Or just:
 ```C#
 newDps = await device.UpdateDpsAsync(9, 10);
 ```
-## Automatic local key refresh
-
-You can create `TuyaDevice` object without local key but with API key/secret like this:
-```C#
-var dev = new TuyaDevice(ip: DEVICE_IP, region: API_REGION, accessId: ACCESS_ID, apiSecret: API_SECRET, deviceId: DEVICE_ID);
-```
-Then obtain local key:
-```C#
-await dev.RefreshLocalKeyAsync()
-```
-
 ### IR Remote Control
 
 Since version 1.0.3 you can control infrared remote controls. There is TuyaIRControl class for it. You can learn button from real remote control using `GetButtonCodeAsync` method (it returns Base64-encoded pulses sequences) and simulate button press using `SendButtonCodeAsync` method.
@@ -255,6 +244,17 @@ while (true)
     Console.WriteLine("Button press simulated");
     await Task.Delay(1000);
 }
+```
+
+### Automatic local key refresh
+
+You can create `TuyaDevice` object without local key but with API key/secret like this:
+```C#
+var dev = new TuyaDevice(ip: DEVICE_IP, region: API_REGION, accessId: ACCESS_ID, apiSecret: API_SECRET, deviceId: DEVICE_ID);
+```
+Then obtain local key:
+```C#
+await dev.RefreshLocalKeyAsync()
 ```
 
 ## Using the Cloud API
