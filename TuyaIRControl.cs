@@ -14,6 +14,25 @@ namespace com.clusterrr.TuyaNet
     /// </summary>
     public class TuyaIRControl : TuyaDevice
     {
+        public const int DP_SEND_IR = 201;                  // ir_send, send and report (read-write)
+        public const int DP_LEARNED_ID = 202;               // ir_study_code, report only (read-only)
+        public const string NSDP_CONTROL = "control";       // The control commands
+        public const string NSDP_STUDY_CODE = "study_code"; // Report learned IR codes
+        public const string NSDP_IR_CODE = "ir_code";              // IR signal decoding2
+        public const string NSDP_KEY_CODE = "key_code";     // Remote key code
+        public const string NSDP_KEY_CODE2 = "key_code2";   // Remote key code 2
+        public const string NSDP_KEY_CODE3 = "key_code3";   // Remote key code 3
+        public const string NSDP_KEY_CODE4 = "key_code4";   // Remote key code 4
+        public const string NSDP_KEY_STUDY = "key_study";   // Send the learning code 1
+        public const string NSDP_KEY_STUDY2 = "key_study2"; // Send the learning code 2
+        public const string NSDP_KEY_STUDY3 = "key_study3"; // Send the learning code 3
+        public const string NSDP_KEY_STUDY4 = "key_study4"; // Send the learning code 4
+        public const string NSDP_DELAY_TIME = "delay_time"; // IR code transmission delay
+        public const string NSDP_TYPE = "type";             // The identifier of an IR library
+        public const string NSDP_DELAY = "delay";           // Actually used but not documented
+        public const string NSDP_HEAD = "head";             // Actually used but not documented
+        public const string NSDP_KEY1 = "key1";             // Actually used but not documented
+
         /// <summary>
         /// Creates a new instance of the TuyaDevice class.
         /// </summary>
@@ -56,7 +75,7 @@ namespace com.clusterrr.TuyaNet
             {
                 var subCmd = new Dictionary<string, object>()
                 {
-                    { "control", "study_exit" }
+                    { NSDP_CONTROL, "study_exit" }
                 };
                 var subCmdJson = JsonConvert.SerializeObject(subCmd);
                 await SetDpsAsync(new Dictionary<int, object>() { { 201, subCmdJson } }, nullRetries: 0, allowEmptyResponse: true, cancellationToken: cancellationToken);
@@ -65,7 +84,7 @@ namespace com.clusterrr.TuyaNet
 
                 subCmd = new Dictionary<string, object>()
                 {
-                    { "control", "study" }
+                    { NSDP_CONTROL, "study" }
                 };
                 subCmdJson = JsonConvert.SerializeObject(subCmd);
                 await SetDpsAsync(new Dictionary<int, object>() { { 201, subCmdJson } }, cancellationToken: cancellationToken);
@@ -86,7 +105,7 @@ namespace com.clusterrr.TuyaNet
                 {
                     var subCmd = new Dictionary<string, object>()
                     {
-                        { "control", "study_exit" }
+                        { NSDP_CONTROL, "study_exit" }
                     };
                     var subCmdJson = JsonConvert.SerializeObject(subCmd);
                     await SetDpsAsync(new Dictionary<int, object>() { { 201, subCmdJson } }, nullRetries: 0, allowEmptyResponse: true, cancellationToken: cancellationToken);
@@ -104,11 +123,10 @@ namespace com.clusterrr.TuyaNet
         {
             var subCmd = new Dictionary<string, object>()
             {
-                { "control", "send_ir" },
-                { "head", "" },
-                { "key1", buttonCode.Length % 4 == 0 ? "1" + buttonCode : buttonCode }, // code need to be padded with "1" (wtf?)
-                { "type", 0 },
-                { "delay", 0 }
+                { NSDP_CONTROL, "send_ir" },
+                { NSDP_KEY1, buttonCode.Length % 4 == 0 ? "1" + buttonCode : buttonCode }, // code need to be padded with "1" (wtf?)
+                { NSDP_TYPE, 0 },
+                { NSDP_DELAY, 0 }
             };
             var subCmdJson = JsonConvert.SerializeObject(subCmd);
             await SetDpsAsync(new Dictionary<int, object>() { { 201, subCmdJson } }, retries: retries,
