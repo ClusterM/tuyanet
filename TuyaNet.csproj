@@ -9,6 +9,7 @@
     <Product>Tuya.Net</Product>
     <Description>.NET library to interface with Tuya WiFi smart devices over LAN.</Description>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageProjectUrl>https://github.com/ClusterM/tuyanet/</PackageProjectUrl>
     <RepositoryUrl>https://github.com/ClusterM/tuyanet/</RepositoryUrl>
     <RepositoryType>Git</RepositoryType>
