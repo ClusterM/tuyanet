@@ -2,6 +2,8 @@
 
 .NET Standard 2.0 library to interface with Tuya WiFi smart devices over LAN, without using the cloud.
 
+Full documentation: https://clusterm.github.io/tuyanet/
+
 ## Description
 
 This library controls and monitors [Tuya](https://en.tuya.com/) compatible WiFi Smart Devices (Plugs, Switches, Lights, Window Covers, etc.) using the local area network (LAN). [Tuya](https://en.tuya.com/) devices are designed to communicate with the Tuya Cloud but most also expose a local area network API, allowing us to directly control the devices without using the cloud.
