@@ -1,6 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TuyaNet", "TuyaNet\TuyaNet.csproj", "{70C91516-50CC-4588-9CE5-68040117FC0B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TuyaNet", "TuyaNet\TuyaNet.csproj", "{40D5F27F-9357-4742-AA98-A15256CE7443}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TuyaNet.Console", "TuyaNet.Console\TuyaNet.Console.csproj", "{6CA562A2-B362-4376-A793-ABDF97562A69}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -8,9 +10,13 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{70C91516-50CC-4588-9CE5-68040117FC0B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{70C91516-50CC-4588-9CE5-68040117FC0B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{70C91516-50CC-4588-9CE5-68040117FC0B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{70C91516-50CC-4588-9CE5-68040117FC0B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{40D5F27F-9357-4742-AA98-A15256CE7443}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{40D5F27F-9357-4742-AA98-A15256CE7443}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{40D5F27F-9357-4742-AA98-A15256CE7443}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{40D5F27F-9357-4742-AA98-A15256CE7443}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6CA562A2-B362-4376-A793-ABDF97562A69}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6CA562A2-B362-4376-A793-ABDF97562A69}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6CA562A2-B362-4376-A793-ABDF97562A69}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6CA562A2-B362-4376-A793-ABDF97562A69}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

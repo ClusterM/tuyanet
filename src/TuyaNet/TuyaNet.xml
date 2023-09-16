@@ -1,0 +1,461 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>TuyaNet</name>
+    </assembly>
+    <members>
+        <member name="T:com.clusterrr.TuyaNet.Crc32">
+            <summary>
+            Performs 32-bit reversed cyclic redundancy checks.
+            </summary>
+        </member>
+        <member name="F:com.clusterrr.TuyaNet.Crc32.s_generator">
+            <summary>
+            Generator polynomial (modulo 2) for the reversed CRC32 algorithm. 
+            </summary>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.Crc32.#ctor">
+            <summary>
+            Creates a new instance of the Crc32 class.
+            </summary>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.Crc32.Get``1(System.Collections.Generic.IEnumerable{``0})">
+            <summary>
+            Calculates the checksum of the byte stream.
+            </summary>
+            <param name="byteStream">The byte stream to calculate the checksum for.</param>
+            <returns>A 32-bit reversed checksum.</returns>
+        </member>
+        <member name="F:com.clusterrr.TuyaNet.Crc32.m_checksumTable">
+            <summary>
+            Contains a cache of calculated checksum chunks.
+            </summary>
+        </member>
+        <member name="T:com.clusterrr.TuyaNet.TuyaApi">
+            <summary>
+            Provides access to Tuya Cloud API.
+            </summary>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.TuyaApi.#ctor(com.clusterrr.TuyaNet.TuyaApi.Region,System.String,System.String)">
+            <summary>
+            Creates a new instance of the TuyaApi class.
+            </summary>
+            <param name="region">Region of server.</param>
+            <param name="accessId">Access ID/Client ID from https://iot.tuya.com/ .</param>
+            <param name="apiSecret">API secret from https://iot.tuya.com/ .</param>
+        </member>
+        <member name="T:com.clusterrr.TuyaNet.TuyaApi.Region">
+            <summary>
+            Region of server.
+            </summary>
+        </member>
+        <member name="T:com.clusterrr.TuyaNet.TuyaApi.Method">
+            <summary>
+            Request method.
+            </summary>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.TuyaApi.RequestAsync(com.clusterrr.TuyaNet.TuyaApi.Method,System.String,System.String,System.Collections.Generic.Dictionary{System.String,System.String},System.Boolean,System.Boolean,System.Threading.CancellationToken)">
+            <summary>
+            Request to official API.
+            </summary>
+            <param name="uri">Method URI.</param>
+            <param name="body">Body of request if any.</param>
+            <param name="headers">Additional headers.</param>
+            <param name="noToken">Execute query without token.</param>
+            <param name="forceTokenRefresh">Refresh access token even it's not expired.</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>JSON string with response.</returns>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.TuyaApi.RefreshAccessTokenAsync(System.Boolean,System.Threading.CancellationToken)">
+            <summary>
+            Request access token if it's expired or not requested yet.
+            </summary>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.TuyaApi.GetDeviceInfoAsync(System.String,System.Boolean,System.Threading.CancellationToken)">
+            <summary>
+            Requests info about device by it's ID.
+            </summary>
+            <param name="deviceId">Device ID.</param>
+            <param name="forceTokenRefresh">Refresh access token even it's not expired.</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>Device info.</returns>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.TuyaApi.GetAllDevicesInfoAsync(System.String,System.Boolean,System.Threading.CancellationToken)">
+            <summary>
+            Requests info about all registered devices, requires ID of any registered device.
+            </summary>
+            <param name="anyDeviceId">ID of any registered device.</param>
+            <param name="forceTokenRefresh">Refresh access token even it's not expired.</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>Array of devices info.</returns>
+        </member>
+        <member name="T:com.clusterrr.TuyaNet.TuyaCommand">
+            <summary>
+            Tuya command type
+            </summary>
+        </member>
+        <member name="T:com.clusterrr.TuyaNet.TuyaDevice">
+            <summary>
+            Connection with Tuya device.
+            </summary>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.TuyaDevice.#ctor(System.String,System.String,System.String,com.clusterrr.TuyaNet.TuyaProtocolVersion,System.Int32,System.Int32)">
+            <summary>
+            Creates a new instance of the TuyaDevice class.
+            </summary>
+            <param name="ip">IP address of device.</param>
+            <param name="localKey">Local key of device (obtained via API).</param>
+            <param name="deviceId">Device ID.</param>
+            <param name="protocolVersion">Protocol version.</param>
+            <param name="port">TCP port of device.</param>
+            <param name="receiveTimeout">Receive timeout (msec).</param>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.TuyaDevice.#ctor(System.String,com.clusterrr.TuyaNet.TuyaApi.Region,System.String,System.String,System.String,com.clusterrr.TuyaNet.TuyaProtocolVersion,System.Int32,System.Int32)">
+            <summary>
+            Creates a new instance of the TuyaDevice class.
+            </summary>
+            <param name="ip">IP address of device.</param>
+            <param name="region">Region to access Cloud API.</param>
+            <param name="accessId">Access ID to access Cloud API.</param>
+            <param name="apiSecret">API secret to access Cloud API.</param>
+            <param name="deviceId">Device ID.</param>
+            <param name="protocolVersion">Protocol version.</param>
+            <param name="port">TCP port of device.</param>
+            <param name="receiveTimeout">Receive timeout (msec).</param> 
+        </member>
+        <member name="P:com.clusterrr.TuyaNet.TuyaDevice.IP">
+            <summary>
+            IP address of device.
+            </summary>
+        </member>
+        <member name="P:com.clusterrr.TuyaNet.TuyaDevice.LocalKey">
+            <summary>
+            Local key of device.
+            </summary>
+        </member>
+        <member name="P:com.clusterrr.TuyaNet.TuyaDevice.DeviceId">
+            <summary>
+            Device ID.
+            </summary>
+        </member>
+        <member name="P:com.clusterrr.TuyaNet.TuyaDevice.Port">
+            <summary>
+            TCP port of device.
+            </summary>
+        </member>
+        <member name="P:com.clusterrr.TuyaNet.TuyaDevice.ProtocolVersion">
+            <summary>
+            Protocol version.
+            </summary>
+        </member>
+        <member name="P:com.clusterrr.TuyaNet.TuyaDevice.ConnectionTimeout">
+            <summary>
+            Connection timeout.
+            </summary>
+        </member>
+        <member name="P:com.clusterrr.TuyaNet.TuyaDevice.ReceiveTimeout">
+            <summary>
+            Receive timeout.
+            </summary>
+        </member>
+        <member name="P:com.clusterrr.TuyaNet.TuyaDevice.NetworkErrorRetriesInterval">
+            <summary>
+            Network error retry interval (msec)
+            </summary>
+        </member>
+        <member name="P:com.clusterrr.TuyaNet.TuyaDevice.NullRetriesInterval">
+            <summary>
+            Empty responce retry interval (msec)
+            </summary>
+        </member>
+        <member name="P:com.clusterrr.TuyaNet.TuyaDevice.PermanentConnection">
+            <summary>
+            Permanent connection (connect and stay connected).
+            </summary>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.TuyaDevice.FillJson(System.String,System.Boolean,System.Boolean,System.Boolean,System.Boolean)">
+            <summary>
+            Fills JSON string with base fields required by most commands.
+            </summary>
+            <param name="json">JSON string</param>
+            <param name="addGwId">Add "gwId" field with device ID.</param>
+            <param name="addDevId">Add "devId" field with device ID.</param>
+            <param name="addUid">Add "uid" field with device ID.</param>
+            <param name="addTime">Add "time" field with current timestamp.</param>
+            <returns>JSON string with added fields.</returns>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.TuyaDevice.EncodeRequest(com.clusterrr.TuyaNet.TuyaCommand,System.String)">
+            <summary>
+            Creates encoded and encrypted payload data from JSON string.
+            </summary>
+            <param name="command">Tuya command ID.</param>
+            <param name="json">String with JSON to send.</param>
+            <returns>Raw data.</returns>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.TuyaDevice.DecodeResponse(System.Byte[])">
+            <summary>
+            Parses and decrypts payload data from received bytes.
+            </summary>
+            <param name="data">Raw data to parse and decrypt.</param>
+            <returns>Instance of TuyaLocalResponse.</returns>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.TuyaDevice.SendAsync(com.clusterrr.TuyaNet.TuyaCommand,System.String,System.Int32,System.Int32,System.Nullable{System.Int32},System.Threading.CancellationToken)">
+            <summary>
+            Sends JSON string to device and reads response.
+            </summary>
+            <param name="command">Tuya command ID.</param>
+            <param name="json">JSON string.</param>
+            <param name="retries">Number of retries in case of network error (default - 2).</param>
+            <param name="nullRetries">Number of retries in case of empty answer (default - 1).</param>
+            <param name="overrideRecvTimeout">Override receive timeout (default - ReceiveTimeout property).</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>Parsed and decrypred received data as instance of TuyaLocalResponse.</returns>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.TuyaDevice.SendAsync(com.clusterrr.TuyaNet.TuyaCommand,System.Byte[],System.Int32,System.Int32,System.Nullable{System.Int32},System.Threading.CancellationToken)">
+            <summary>
+            Sends raw data over to device and read response.
+            </summary>
+            <param name="data">Raw data to send.</param>
+            <param name="retries">Number of retries in case of network error (default - 2).</param>
+            <param name="nullRetries">Number of retries in case of empty answer (default - 1).</param>
+            <param name="overrideRecvTimeout">Override receive timeout (default - ReceiveTimeout property).</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>Received data (raw).</returns>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.TuyaDevice.GetDpsAsync(System.Int32,System.Int32,System.Nullable{System.Int32},System.Threading.CancellationToken)">
+            <summary>
+            Requests current DPs status.
+            </summary>
+            <param name="retries">Number of retries in case of network error (default - 2).</param>
+            <param name="nullRetries">Number of retries in case of empty answer (default - 1).</param>
+            <param name="overrideRecvTimeout">Override receive timeout (default - ReceiveTimeout property).</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>Dictionary of DP numbers and values.</returns>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.TuyaDevice.SetDpAsync(System.Int32,System.Object,System.Int32,System.Int32,System.Nullable{System.Int32},System.Boolean,System.Threading.CancellationToken)">
+            <summary>
+            Sets single DP to specified value.
+            </summary>
+            <param name="dp">DP number.</param>
+            <param name="value">Value.</param>
+            <param name="retries">Number of retries in case of network error (default - 2).</param>
+            <param name="nullRetries">Number of retries in case of empty answer (default - 1).</param>
+            <param name="overrideRecvTimeout">Override receive timeout (default - ReceiveTimeout property).</param>
+            <param name="allowEmptyResponse">Do not throw exception on empty Response</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>Dictionary of DP numbers and values.</returns>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.TuyaDevice.SetDpsAsync(System.Collections.Generic.Dictionary{System.Int32,System.Object},System.Int32,System.Int32,System.Nullable{System.Int32},System.Boolean,System.Threading.CancellationToken)">
+            <summary>
+            Sets DPs to specified value.
+            </summary>
+            <param name="dps">Dictionary of DP numbers and values to set.</param>
+            <param name="retries">Number of retries in case of network error (default - 2).</param>
+            <param name="nullRetries">Number of retries in case of empty answer (default - 1).</param>
+            <param name="overrideRecvTimeout">Override receive timeout (default - ReceiveTimeout property).</param>
+            <param name="allowEmptyResponse">Do not throw exception on empty Response</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>Dictionary of DP numbers and values.</returns>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.TuyaDevice.UpdateDpsAsync(System.Collections.Generic.IEnumerable{System.Int32},System.Int32,System.Int32,System.Nullable{System.Int32},System.Threading.CancellationToken)">
+            <summary>
+            Update DP values.
+            </summary>
+            <param name="dpIds">DP identificators to update (can be empty for some devices).</param>
+            <param name="retries">Number of retries in case of network error (default - 2).</param>
+            <param name="nullRetries">Number of retries in case of empty answer (default - 1).</param>
+            <param name="overrideRecvTimeout">Override receive timeout (default - ReceiveTimeout property).</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>Dictionary of DP numbers and values.</returns>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.TuyaDevice.RefreshLocalKeyAsync(System.Boolean,System.Threading.CancellationToken)">
+            <summary>
+            Get current local key from Tuya Cloud API
+            </summary>
+            <param name="forceTokenRefresh">Refresh access token even it's not expired.</param>
+            <param name="cancellationToken">Cancellation token.</param>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.TuyaDevice.Dispose">
+            <summary>
+            Disposes object.
+            </summary>
+        </member>
+        <member name="T:com.clusterrr.TuyaNet.TuyaDeviceApiInfo">
+            <summary>
+            Device info received from Tuya API.
+            </summary>
+        </member>
+        <member name="T:com.clusterrr.TuyaNet.TuyaDeviceScanInfo">
+            <summary>
+            Device info received from local network.
+            </summary>
+        </member>
+        <member name="T:com.clusterrr.TuyaNet.TuyaDeviceStatus">
+            <summary>
+            Currect device status.
+            </summary>
+        </member>
+        <member name="P:com.clusterrr.TuyaNet.TuyaDeviceStatus.Code">
+            <summary>
+            DPS number
+            </summary>
+        </member>
+        <member name="P:com.clusterrr.TuyaNet.TuyaDeviceStatus.Value">
+            <summary>
+            DPS value.
+            </summary>
+        </member>
+        <member name="T:com.clusterrr.TuyaNet.TuyaIRControl">
+            <summary>
+            Tuya virtual IR remote control
+            </summary>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.TuyaIRControl.#ctor(System.String,System.String,System.String,com.clusterrr.TuyaNet.TuyaProtocolVersion,System.Int32,System.Int32)">
+            <summary>
+            Creates a new instance of the TuyaDevice class.
+            </summary>
+            <param name="ip">IP address of device.</param>
+            <param name="localKey">Local key of device (obtained via API).</param>
+            <param name="deviceId">Device ID.</param>
+            <param name="protocolVersion">Protocol version.</param>
+            <param name="port">TCP port of device.</param>
+            <param name="receiveTimeout">Receive timeout (msec).</param>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.TuyaIRControl.#ctor(System.String,com.clusterrr.TuyaNet.TuyaApi.Region,System.String,System.String,System.String,com.clusterrr.TuyaNet.TuyaProtocolVersion,System.Int32,System.Int32)">
+            <summary>
+            Creates a new instance of the TuyaDevice class.
+            </summary>
+            <param name="ip">IP address of device.</param>
+            <param name="region">Region to access Cloud API.</param>
+            <param name="accessId">Access ID to access Cloud API.</param>
+            <param name="apiSecret">API secret to access Cloud API.</param>
+            <param name="deviceId">Device ID.</param>
+            <param name="protocolVersion">Protocol version.</param>
+            <param name="port">TCP port of device.</param>
+            <param name="receiveTimeout">Receive timeout (msec).</param> 
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.TuyaIRControl.GetButtonCodeAsync(System.Int32,System.Int32,System.Threading.CancellationToken)">
+            <summary>
+            Learns button code of remote control.
+            </summary>
+            <param name="timeout">Learing timeout, you should press RC button during this interval.</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>Button code as Base64 string.</returns>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.TuyaIRControl.SendButtonCodeAsync(System.String,System.Int32,System.Nullable{System.Int32},System.Threading.CancellationToken)">
+            <summary>
+            Sends button code.
+            </summary>
+            <param name="buttonCode">Button code in Base64 encoding.</param>
+            <param name="cancellationToken">Cancellation token.</param>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.TuyaIRControl.Base64ToPulses(System.String)">
+            <summary>
+            Converts Base64 encoded button code into pulses duration.
+            </summary>
+            <param name="codeBase64">Base64 encoded button code.</param>
+            <returns>Pulses/gaps length in microsecods.</returns>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.TuyaIRControl.PulsesToBase64(System.UInt16[])">
+            <summary>
+            Converts pulses duration into Base64 encoded button code.
+            </summary>
+            <param name="pulses">Pulses/gaps length in microsecods.</param>
+            <returns>Base64 encoded button code.</returns>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.TuyaIRControl.HexToPulses(System.String)">
+            <summary>
+            Converts hex encoded button code into pulses duration.
+            </summary>
+            <param name="codeHex">Hex encoded button code.</param>
+            <returns>Pulses/gaps length in microsecods.</returns>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.TuyaIRControl.PulsesToHex(System.UInt16[])">
+            <summary>
+            Converts pulses duration into hex encoded button code.
+            </summary>
+            <param name="pulses">Pulses/gaps length in microsecods.</param>
+            <returns>Hex encoded button code.</returns>
+        </member>
+        <member name="T:com.clusterrr.TuyaNet.TuyaLocalResponse">
+            <summary>
+            Response from local Tuya device.
+            </summary>
+        </member>
+        <member name="P:com.clusterrr.TuyaNet.TuyaLocalResponse.Command">
+            <summary>
+            Command code.
+            </summary>
+        </member>
+        <member name="P:com.clusterrr.TuyaNet.TuyaLocalResponse.ReturnCode">
+            <summary>
+            Return code.
+            </summary>
+        </member>
+        <member name="P:com.clusterrr.TuyaNet.TuyaLocalResponse.Payload">
+            <summary>
+            Response as bytes string.
+            </summary>
+        </member>
+        <member name="P:com.clusterrr.TuyaNet.TuyaLocalResponse.Json">
+            <summary>
+            Response as JSON string.
+            </summary>
+        </member>
+        <member name="T:com.clusterrr.TuyaNet.TuyaParser">
+            <summary>
+            Class to encode and decode data sent over local network.
+            </summary>
+        </member>
+        <member name="T:com.clusterrr.TuyaNet.TuyaProtocolVersion">
+            <summary>
+            Tuya protocol version.
+            </summary>
+        </member>
+        <member name="F:com.clusterrr.TuyaNet.TuyaProtocolVersion.V31">
+            <summary>
+            Version 3.1.
+            </summary>
+        </member>
+        <member name="F:com.clusterrr.TuyaNet.TuyaProtocolVersion.V33">
+            <summary>
+            Version 3.3.
+            </summary>
+        </member>
+        <member name="F:com.clusterrr.TuyaNet.TuyaProtocolVersion.V34">
+            <summary>
+            Version 3.4.
+            </summary>
+        </member>
+        <member name="T:com.clusterrr.TuyaNet.TuyaScanner">
+            <summary>
+            Scanner to discover devices over local network.
+            </summary>
+        </member>
+        <member name="E:com.clusterrr.TuyaNet.TuyaScanner.OnDeviceInfoReceived">
+            <summary>
+            Even that will be called on every broadcast message from devices.
+            </summary>
+        </member>
+        <member name="E:com.clusterrr.TuyaNet.TuyaScanner.OnNewDeviceInfoReceived">
+            <summary>
+            Even that will be called only once for every device.
+            </summary>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.TuyaScanner.#ctor">
+            <summary>
+            Creates a new instance of the TuyaScanner class.
+            </summary>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.TuyaScanner.Start">
+            <summary>
+            Starts scanner.
+            </summary>
+        </member>
+        <member name="M:com.clusterrr.TuyaNet.TuyaScanner.Stop">
+            <summary>
+            Stops scanner.
+            </summary>
+        </member>
+    </members>
+</doc>

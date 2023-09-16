@@ -11,18 +11,35 @@ namespace com.clusterrr.TuyaNet
     /// <summary>
     /// Class to encode and decode data sent over local network.
     /// </summary>
-    internal static class TuyaParser
+    internal class TuyaParser
     {
         private static byte[] PROTOCOL_VERSION_BYTES_31 = Encoding.ASCII.GetBytes("3.1");
         private static byte[] PROTOCOL_VERSION_BYTES_33 = Encoding.ASCII.GetBytes("3.3");
+        private static byte[] PROTOCOL_VERSION_BYTES_34 = Encoding.ASCII.GetBytes("3.4");
         private static byte[] PROTOCOL_33_HEADER = Enumerable.Concat(PROTOCOL_VERSION_BYTES_33, new byte[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }).ToArray();
+        private static byte[] PROTOCOL_34_HEADER = Enumerable.Concat(PROTOCOL_VERSION_BYTES_34, new byte[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }).ToArray();
         private static byte[] PREFIX = new byte[] { 0, 0, 0x55, 0xAA };
-        private static byte[] SUFFIX = { 0, 0, 0xAA, 0x55 };
-        private static uint SeqNo = 0;
+        internal static byte[] SUFFIX = { 0, 0, 0xAA, 0x55 };
+        private uint SeqNo = 0;
+        private byte[] sessionKey;
+        private byte[] localKey;
+        private TuyaProtocolVersion version;
 
-        internal static IEnumerable<byte> BigEndian(IEnumerable<byte> seq) => BitConverter.IsLittleEndian ? seq.Reverse() : seq;
+        public TuyaParser(string localKey, TuyaProtocolVersion tuyaProtocolVersion) 
+            : this(Encoding.UTF8.GetBytes(localKey), tuyaProtocolVersion)
+        {
+        }
+        
+        public TuyaParser(byte[] localKey, TuyaProtocolVersion tuyaProtocolVersion)
+        {
+            this.sessionKey = null;
+            this.localKey = localKey;
+            this.version = tuyaProtocolVersion;
+        }
 
-        internal static byte[] Encrypt(byte[] data, byte[] key)
+        internal IEnumerable<byte> BigEndian(IEnumerable<byte> seq) => BitConverter.IsLittleEndian ? seq.Reverse() : seq;
+
+        internal byte[] Encrypt(byte[] data, byte[] key)
         {
             var aes = new AesManaged()
             {
@@ -38,10 +55,23 @@ namespace com.clusterrr.TuyaNet
             }
             return data;
         }
-
-        internal static byte[] Decrypt(byte[] data, byte[] key)
+        
+        internal byte[] Encrypt34(byte[] data)
         {
-            if (data.Length == 0) return data;
+            var key = GetKey();
+            var chiper = Aes.Create();
+            chiper.Key = key;
+            chiper.Mode = CipherMode.ECB;
+            chiper.Padding = PaddingMode.None;
+            var encryptor = chiper.CreateEncryptor();
+            var dest = encryptor.TransformFinalBlock(data, 0, data.Length);
+            return dest;
+        }
+        
+        internal byte[] Decrypt(byte[] data, byte[] key)
+        {
+            if (data is null || data.Length == 0) return data;
+            
             var aes = new AesManaged()
             {
                 Mode = CipherMode.ECB,
@@ -57,8 +87,11 @@ namespace com.clusterrr.TuyaNet
             return data;
         }
 
-        internal static byte[] EncodeRequest(TuyaCommand command, string json, byte[] key, TuyaProtocolVersion protocolVersion = TuyaProtocolVersion.V33)
+        internal byte[] EncodeRequest(TuyaCommand command, string json, byte[] key, TuyaProtocolVersion protocolVersion = TuyaProtocolVersion.V33)
         {
+            if (protocolVersion == TuyaProtocolVersion.V34)
+                return EncodeRequest34(command, json, key);
+            
             // Remove spaces and newlines
             var root = JObject.Parse(json);
             json = root.ToString(Newtonsoft.Json.Formatting.None);
@@ -102,7 +135,7 @@ namespace com.clusterrr.TuyaNet
 
             using (var ms = new MemoryStream())
             {
-                byte[] seqNo = BitConverter.GetBytes(SeqNo++);
+                byte[] seqNo = BitConverter.GetBytes(++SeqNo);
                 if (BitConverter.IsLittleEndian) Array.Reverse(seqNo);  // Make big-endian
                 byte[] dataLength = BitConverter.GetBytes(payload.Length + 8);
                 if (BitConverter.IsLittleEndian) Array.Reverse(dataLength); // Make big-endian
@@ -124,8 +157,190 @@ namespace com.clusterrr.TuyaNet
             return payload;
         }
 
-        internal static TuyaLocalResponse DecodeResponse(byte[] data, byte[] key, TuyaProtocolVersion protocolVersion = TuyaProtocolVersion.V33)
+        internal void SetupSessionKey(byte[] sessionKey)
         {
+            this.sessionKey = sessionKey;
+        }
+
+        internal byte[] EncodeRequest34(TuyaCommand command, string json, byte[] key)
+        {
+            // Remove spaces and newlines
+            //"{\"data\":{\"ctype\":0,\"devId\":\"bf1d446bf5f3fbfc57fu5u\",\"gwId\":\"bf1d446bf5f3fbfc57fu5u\",\"uid\":\"\",\"dps\":{\"1\":true}},\"protocol\":5,\"t\":1694800339}"
+            var root = JObject.Parse(json);
+            json = root.ToString(Newtonsoft.Json.Formatting.None);
+            byte[] payload = Encoding.UTF8.GetBytes(json);
+            return EncodeRequest34(command, payload, key);
+        }
+        
+        internal byte[] EncodeRequest34(TuyaCommand command, byte[] payload, byte[] key)
+        {
+            // Add protocol 3.4 header
+            if (
+                (command != TuyaCommand.DP_QUERY) && 
+                (command != TuyaCommand.HEART_BEAT) && 
+                (command != TuyaCommand.DP_QUERY_NEW) && 
+                (command != TuyaCommand.SESS_KEY_NEG_START) && 
+                (command != TuyaCommand.SESS_KEY_NEG_FINISH) && 
+                (command != TuyaCommand.UPDATE_DPS)
+                )
+                payload = Enumerable.Concat(PROTOCOL_34_HEADER, payload).ToArray();
+
+            var paddingSize = 0x10 - (payload.Length & 0xF);
+            payload = payload.Concat(Enumerable.Range(0, paddingSize).Select(x => (byte)paddingSize)).ToArray();
+
+            // Encrypt
+            payload = Encrypt34(payload);
+            
+            using (var ms = new MemoryStream())
+            {
+                byte[] seqNo = BitConverter.GetBytes(++SeqNo);
+                if (BitConverter.IsLittleEndian) 
+                    Array.Reverse(seqNo);  // Make big-endian
+                byte[] dataLength = BitConverter.GetBytes(payload.Length + 36);
+                if (BitConverter.IsLittleEndian) 
+                    Array.Reverse(dataLength); // Make big-endian
+
+                var commandBytes = BitConverter.GetBytes((uint)command);
+                if (BitConverter.IsLittleEndian) 
+                    Array.Reverse(commandBytes); // Make big-endian
+                
+                ms.Write(PREFIX, 0, PREFIX.Length);              // Prefix
+                ms.Write(seqNo, 0, seqNo.Length);                // Packet number
+                ms.Write(commandBytes, 0, commandBytes.Length);  // Command number
+                ms.Write(dataLength, 0, dataLength.Length);      // Length of data + length of suffix
+                ms.Write(payload, 0, payload.Length);            // Data
+                var hashHmacSha256 = GetHashSha256(ms.ToArray());
+                ms.Write(hashHmacSha256, 0, hashHmacSha256.Length);// hashHmacSha256 checksum
+                ms.Write(SUFFIX, 0, SUFFIX.Length);                // Suffix
+                payload = ms.ToArray();
+            }
+            return payload;
+        }
+
+        internal byte[] GetHashSha256(byte[] byteArray)
+        {
+            var encryptKey = GetKey();
+            using (var hasher = new HMACSHA256(encryptKey))
+            {
+                var hashValue = hasher.ComputeHash(byteArray);
+                return hashValue;
+            }
+        }
+
+        internal byte[] GetKey()
+        {
+            return sessionKey is null ? localKey : sessionKey;
+        }
+
+        private TuyaLocalResponse ParseResponse(byte[] data)
+        {
+            var defaultUintSize = 4;
+            var headerSize = 16;
+            var returnCodeSize = defaultUintSize;
+            var suffixSize = defaultUintSize;
+            var responseHeaderSize = headerSize + returnCodeSize; 
+            var hashSize = 32;
+            var crcSize = 4;
+            var endingHashWithSuffix = hashSize + defaultUintSize;
+            var endingCrcWithSuffix = crcSize + defaultUintSize;
+            
+            // Check length and prefix
+            if (data.Length < 20 || !data.Take(PREFIX.Length).SequenceEqual(PREFIX))
+            {
+                throw new InvalidDataException("Invalid header/prefix");
+            }
+            // Check length
+            var payloadSize = BitConverter.ToInt32(BigEndian(data.Skip(12).Take(4)).ToArray(), 0);
+            if (data.Length != headerSize + payloadSize)
+            {
+                throw new InvalidDataException("Invalid length");
+            }
+            // Check suffix
+            if (!data.Skip(headerSize + payloadSize - SUFFIX.Length).Take(SUFFIX.Length).SequenceEqual(SUFFIX))
+            {
+                throw new InvalidDataException("Invalid suffix");
+            }
+            
+            // Packet number
+            var seq = BitConverter.ToUInt32(BigEndian(data.Skip(4).Take(4)).ToArray(), 0);
+            
+            // Command
+            var command = (TuyaCommand)BitConverter.ToUInt32(BigEndian(data.Skip(8).Take(4)).ToArray(), 0);
+            var isDiscoveryPackage = 
+                command == TuyaCommand.UDP ||
+                command == TuyaCommand.UDP_NEW ||
+                command == TuyaCommand.BOARDCAST_LPV34;
+            
+            // Return code
+            var returnCode = BitConverter.ToUInt32(BigEndian(data.Skip(headerSize).Take(4)).ToArray(), 0);
+            
+            // Data parse
+            byte[] payload;
+            if ((returnCode & 0xFFFFFF00) > 0) {
+                if (this.version == TuyaProtocolVersion.V34 && !isDiscoveryPackage) {
+                    payload = data.Skip(headerSize).Take(payloadSize - endingHashWithSuffix).ToArray();
+                } else {
+                    payload = data.Skip(headerSize).Take(payloadSize - returnCodeSize - endingCrcWithSuffix).ToArray();
+                }
+            } else if (this.version == TuyaProtocolVersion.V34 && !isDiscoveryPackage) {
+                payload = data.Skip(responseHeaderSize).Take(payloadSize - returnCodeSize - endingHashWithSuffix).ToArray();
+            } else {
+                payload = data.Skip(responseHeaderSize).Take(payloadSize - returnCodeSize - endingCrcWithSuffix).ToArray();
+            }
+            
+            if (this.version == TuyaProtocolVersion.V34 && !isDiscoveryPackage) {
+                var expected = data.Skip(responseHeaderSize + payload.Length).Take(hashSize).ToArray();
+                var computed = GetHashSha256(data.Take(responseHeaderSize + payload.Length).ToArray());
+                if (!expected.SequenceEqual(computed)) {
+                    throw new Exception("HMAC mismatch.");
+                }
+            } else
+            {
+                var expected = data.Skip(responseHeaderSize + payload.Length).Take(crcSize).ToArray();
+                var crcComputed = new Crc32().Get(data.Take(responseHeaderSize + payload.Length).ToArray());
+                byte[] computed = BitConverter.GetBytes(crcComputed);
+                if (BitConverter.IsLittleEndian) Array.Reverse(computed);
+                if (!expected.SequenceEqual(computed)) 
+                {
+                    throw new Exception("CRC mismatch.");
+                }
+            }
+            
+            if (payload.Length == 0)
+                return new TuyaLocalResponse(command, (int)returnCode, null);
+
+            return new TuyaLocalResponse(command, (int)returnCode, payload);
+        }
+
+        internal TuyaLocalResponse DecodeResponse34(byte[] data)
+        {
+            var byteResponse = ParseResponse(data);
+            var decodedBytes = Decrypt(byteResponse.Payload, GetKey());
+
+            string json = null;
+            try
+            {
+                json = Encoding.UTF8.GetString(decodedBytes);
+                if (!json.StartsWith("{") || !json.EndsWith("}"))
+                {
+                    json = null;
+                    throw new InvalidDataException($"Response is not JSON: {json}");
+                }
+            }
+            catch (Exception e)
+            {
+                // ignored
+            }
+
+            return new TuyaLocalResponse(byteResponse.Command, byteResponse.ReturnCode, decodedBytes, json);
+        }
+        
+        internal TuyaLocalResponse DecodeResponse(byte[] data)
+        {
+            if (version == TuyaProtocolVersion.V34)
+                return DecodeResponse34(data);
+            
+            //todo rm next code and use decode34
             // Check length and prefix
             if (data.Length < 20 || !data.Take(PREFIX.Length).SequenceEqual(PREFIX))
             {
@@ -152,32 +367,32 @@ namespace com.clusterrr.TuyaNet
             // Data
             data = data.Skip(20).Take(length - 12).ToArray();
 
-            var realVersion = protocolVersion;
             // Remove version 3.1 header
             if (data.Take(PROTOCOL_VERSION_BYTES_31.Length).SequenceEqual(PROTOCOL_VERSION_BYTES_31))
             {
                 data = data.Skip(PROTOCOL_VERSION_BYTES_31.Length).ToArray();
-                realVersion = TuyaProtocolVersion.V31;
+                this.version = TuyaProtocolVersion.V31;
             }
             // Remove version 3.3 header
             if (data.Take(PROTOCOL_VERSION_BYTES_33.Length).SequenceEqual(PROTOCOL_VERSION_BYTES_33))
             {
                 data = data.Skip(PROTOCOL_33_HEADER.Length).ToArray();
-                realVersion = TuyaProtocolVersion.V33;
+                this.version = TuyaProtocolVersion.V33;
             }
 
-            if (realVersion == TuyaProtocolVersion.V33)
+            if (this.version == TuyaProtocolVersion.V33)
             {
-                data = Decrypt(data, key);
+                data = Decrypt(data, GetKey());
             }
 
             if (data.Length == 0)
-                return new TuyaLocalResponse(command, returnCode, null);
+                return new TuyaLocalResponse(command, returnCode, null, null);
 
             var json = Encoding.UTF8.GetString(data);
             if (!json.StartsWith("{") || !json.EndsWith("}"))
                 throw new InvalidDataException($"Response is not JSON: {json}");
-            return new TuyaLocalResponse(command, returnCode, json);
+            
+            return new TuyaLocalResponse(command, returnCode, data, json);
         }
     }
 }
