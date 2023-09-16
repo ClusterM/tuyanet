@@ -1,0 +1,16 @@
+[
+  {
+    "Name": "room 1 device v 3.4",
+    "DeviceId": "secret",
+    "LocalIp": "127.0.0.1",
+    "LocalKey": "secret",
+    "ApiVer": "3.4"
+  },
+  {
+    "Name": "room 2 device v 3.3",
+    "DeviceId": "secret",
+    "LocalIp": "127.0.0.1",
+    "LocalKey": "secret",
+    "ApiVer": "3.3"
+  }
+]

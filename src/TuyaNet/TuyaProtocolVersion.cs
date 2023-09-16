@@ -12,6 +12,10 @@
         /// <summary>
         /// Version 3.3.
         /// </summary>
-        V33
+        V33,
+        /// <summary>
+        /// Version 3.4.
+        /// </summary>
+        V34
     }
 }
