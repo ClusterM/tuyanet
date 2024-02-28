@@ -9,6 +9,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using com.clusterrr.TuyaNet.Extensions;
 
 namespace com.clusterrr.TuyaNet
 {
@@ -17,6 +18,8 @@ namespace com.clusterrr.TuyaNet
     /// </summary>
     public class TuyaDevice : IDisposable
     {
+        private readonly TuyaParser parser;
+        
         /// <summary>
         /// Creates a new instance of the TuyaDevice class.
         /// </summary>
@@ -26,7 +29,11 @@ namespace com.clusterrr.TuyaNet
         /// <param name="protocolVersion">Protocol version.</param>
         /// <param name="port">TCP port of device.</param>
         /// <param name="receiveTimeout">Receive timeout (msec).</param>
-        public TuyaDevice(string ip, string localKey, string deviceId, TuyaProtocolVersion protocolVersion = TuyaProtocolVersion.V33, int port = 6668, int receiveTimeout = 250)
+        public TuyaDevice(
+            string ip, string localKey, string deviceId, 
+            TuyaProtocolVersion protocolVersion = TuyaProtocolVersion.V33, 
+            int port = 6668, 
+            int receiveTimeout = 1500)
         {
             IP = ip;
             LocalKey = localKey;
@@ -36,6 +43,7 @@ namespace com.clusterrr.TuyaNet
             ProtocolVersion = protocolVersion;
             Port = port;
             ReceiveTimeout = receiveTimeout;
+            parser = new TuyaParser(localKey, protocolVersion);
         }
 
         /// <summary>
@@ -108,6 +116,7 @@ namespace com.clusterrr.TuyaNet
         private string accessId;
         private string apiSecret;
         private SemaphoreSlim sem = new SemaphoreSlim(1);
+        private NetworkStream networkClientStream;
 
         /// <summary>
         /// Fills JSON string with base fields required by most commands.
@@ -145,7 +154,7 @@ namespace com.clusterrr.TuyaNet
         public byte[] EncodeRequest(TuyaCommand command, string json)
         {
             if (string.IsNullOrEmpty(LocalKey)) throw new ArgumentException("LocalKey is not specified", "LocalKey");
-            return TuyaParser.EncodeRequest(command, json, Encoding.UTF8.GetBytes(LocalKey), ProtocolVersion);
+            return parser.EncodeRequest(command, json, Encoding.UTF8.GetBytes(LocalKey), ProtocolVersion);
         }
 
         /// <summary>
@@ -156,7 +165,7 @@ namespace com.clusterrr.TuyaNet
         public TuyaLocalResponse DecodeResponse(byte[] data)
         {
             if (string.IsNullOrEmpty(LocalKey)) throw new ArgumentException("LocalKey is not specified", "LocalKey");
-            return TuyaParser.DecodeResponse(data, Encoding.UTF8.GetBytes(LocalKey), ProtocolVersion);
+            return parser.DecodeResponse(data);
         }
 
         /// <summary>
@@ -170,8 +179,59 @@ namespace com.clusterrr.TuyaNet
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Parsed and decrypred received data as instance of TuyaLocalResponse.</returns>
         public async Task<TuyaLocalResponse> SendAsync(TuyaCommand command, string json, int retries = 2, int nullRetries = 1, int? overrideRecvTimeout = null, CancellationToken cancellationToken = default)
-            => DecodeResponse(await SendAsync(EncodeRequest(command, json), retries, nullRetries, overrideRecvTimeout, cancellationToken));
+            => DecodeResponse(await SendAsync(command, EncodeRequest(command, json), retries, nullRetries, overrideRecvTimeout, cancellationToken));
 
+        public async Task SecureConnectAsync(CancellationToken cancellationToken = default)
+        {
+            if (client == null)
+                client = new TcpClient();
+            if (!client.ConnectAsync(IP, Port).Wait(ConnectionTimeout))
+                throw new IOException("Connection timeout");
+            networkClientStream = client.GetStream();
+            
+            if (ProtocolVersion == TuyaProtocolVersion.V34)
+            {
+                var random = new Random();
+                var tmpLocalKey = new byte[16];
+                random.NextBytes(tmpLocalKey);
+                var key = Encoding.UTF8.GetBytes(LocalKey);
+                var request = parser.EncodeRequest34(
+                    TuyaCommand.SESS_KEY_NEG_START,
+                    tmpLocalKey,
+                    key
+                    );
+                await networkClientStream.WriteAsync(request, cancellationToken).ConfigureAwait(false);
+                var receivedBytes = await ReceiveAsync(networkClientStream, 1, null, cancellationToken);
+                var response = parser.DecodeResponse(receivedBytes);
+                if ((int)response.Command == (int)TuyaCommand.SESS_KEY_NEG_RES)
+                {
+                    var remoteKeySize = 16;
+                    var hashSize = 32;
+                    var tmpRemoteKey = response.Payload.Take(remoteKeySize).ToArray();
+                    var hash = parser.GetHashSha256(tmpLocalKey);
+                    var expectedHash = response.Payload.Skip(remoteKeySize).Take(hashSize).ToArray();
+                    if (!expectedHash.SequenceEqual(hash))
+                        throw new Exception("HMAC mismatch");
+                    
+                    var requestFinish = parser.EncodeRequest34(
+                        TuyaCommand.SESS_KEY_NEG_FINISH,
+                        parser.GetHashSha256(tmpRemoteKey),
+                        key
+                    );
+                    await networkClientStream.WriteAsync(requestFinish, cancellationToken).ConfigureAwait(false);
+
+                    var sessionKey = new byte[tmpLocalKey.Length];
+                    for (var i = 0; i < tmpLocalKey.Length; i++)
+                    {
+                        var value = (byte)(tmpLocalKey[i] ^ tmpRemoteKey[i]);
+                        sessionKey[i] = value;
+                    }
+                    var encryptedSessionKey = parser.Encrypt34(sessionKey);
+                    parser.SetupSessionKey(encryptedSessionKey);
+                }
+            }
+        }
+        
         /// <summary>
         /// Sends raw data over to device and read response.
         /// </summary>
@@ -181,7 +241,7 @@ namespace com.clusterrr.TuyaNet
         /// <param name="overrideRecvTimeout">Override receive timeout (default - ReceiveTimeout property).</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Received data (raw).</returns>
-        public async Task<byte[]> SendAsync(byte[] data, int retries = 2, int nullRetries = 1, int? overrideRecvTimeout = null, CancellationToken cancellationToken = default)
+        public async Task<byte[]> SendAsync(TuyaCommand command, byte[] data, int retries = 2, int nullRetries = 1, int? overrideRecvTimeout = null, CancellationToken cancellationToken = default)
         {
             Exception lastException = null;
             while (retries-- > 0)
@@ -196,13 +256,26 @@ namespace com.clusterrr.TuyaNet
                 {
                     using (await sem.WaitDisposableAsync(cancellationToken))
                     {
-                        if (client == null)
-                            client = new TcpClient();
-                        if (!client.ConnectAsync(IP, Port).Wait(ConnectionTimeout))
-                            throw new IOException("Connection timeout");
-                        var stream = client.GetStream();
-                        await stream.WriteAsync(data, 0, data.Length, cancellationToken).ConfigureAwait(false);
-                        return await ReceiveAsync(stream, nullRetries, overrideRecvTimeout, cancellationToken);
+                        if (networkClientStream == null)
+                        {
+                            throw new Exception("Need invoke ConnectAsync before sendig.");
+                        }
+                        await networkClientStream.WriteAsync(data, 0, data.Length, cancellationToken).ConfigureAwait(false);
+                        var str = client.GetStream();
+                        byte[] response = null;
+                        while (response == null)
+                        {
+                            var responseRaw = await ReceiveAsync(str, nullRetries, overrideRecvTimeout, cancellationToken);
+                            var responseParsed = parser.DecodeResponse(responseRaw);
+                            Console.WriteLine($"Command: {responseParsed.Command.GetNames()}");
+                            Console.WriteLine($"Json: {responseParsed.Json}");
+                            Console.WriteLine($"Size payload: {responseParsed.Payload?.Length}");
+                            //for protocol v3.4 need wait response by command
+                            if (responseParsed.Command == command ||
+                                ProtocolVersion != TuyaProtocolVersion.V34)
+                                response = responseRaw;
+                        }
+                        return response;
                     }
                 }
                 catch (Exception ex) when (ex is IOException or TimeoutException or SocketException)
@@ -231,12 +304,13 @@ namespace com.clusterrr.TuyaNet
 
         private async Task<byte[]> ReceiveAsync(NetworkStream stream, int nullRetries = 1, int? overrideRecvTimeout = null, CancellationToken cancellationToken = default)
         {
+            var isEnding = false;
             byte[] result;
             byte[] buffer = new byte[1024];
             using (var ms = new MemoryStream())
             {
                 int length = buffer.Length;
-                while ((ms.Length < 16) || ((length = BitConverter.ToInt32(TuyaParser.BigEndian(ms.ToArray().Skip(12).Take(4)).ToArray(), 0) + 16) < ms.Length))
+                while (!isEnding && !stream.DataAvailable)
                 {
                     var timeoutCancellationTokenSource = new CancellationTokenSource();
                     var readTask = stream.ReadAsync(buffer, 0, length, cancellationToken: cancellationToken);
@@ -256,6 +330,16 @@ namespace com.clusterrr.TuyaNet
                         bytes = await readTask;
                     }
                     ms.Write(buffer, 0, bytes);
+                    var receivedArray = ms.ToArray();
+                    if (receivedArray.Length > 4)
+                    {
+                        var packetEnding = receivedArray.Skip(receivedArray.Length - 4).Take(4).ToArray();
+                        isEnding = TuyaParser.SUFFIX.SequenceEqual(packetEnding);
+                    }
+                    else
+                    {
+                        isEnding = true;
+                    }
                 }
                 result = ms.ToArray();
             }
@@ -279,9 +363,9 @@ namespace com.clusterrr.TuyaNet
         {
             var requestJson = FillJson(null);
             var response = await SendAsync(TuyaCommand.DP_QUERY, requestJson, retries, nullRetries, overrideRecvTimeout, cancellationToken);
-            if (string.IsNullOrEmpty(response.JSON))
+            if (string.IsNullOrEmpty(response.Json))
                 throw new InvalidDataException("Response is empty");
-            var root = JObject.Parse(response.JSON);
+            var root = JObject.Parse(response.Json);
             var dps = JsonConvert.DeserializeObject<Dictionary<string, object>>(root.GetValue("dps").ToString());
             return dps.ToDictionary(kv => int.Parse(kv.Key), kv => kv.Value);
         }
@@ -319,14 +403,14 @@ namespace com.clusterrr.TuyaNet
             string requestJson = JsonConvert.SerializeObject(cmd);
             requestJson = FillJson(requestJson);
             var response = await SendAsync(TuyaCommand.CONTROL, requestJson, retries, nullRetries, overrideRecvTimeout, cancellationToken);
-            if (string.IsNullOrEmpty(response.JSON))
+            if (string.IsNullOrEmpty(response.Json))
             {
                 if (!allowEmptyResponse)
                     throw new InvalidDataException("Response is empty");
                 else
                     return null;
             }
-            var root = JObject.Parse(response.JSON);
+            var root = JObject.Parse(response.Json);
             var newDps = JsonConvert.DeserializeObject<Dictionary<string, object>>(root.GetValue("dps").ToString());
             return newDps.ToDictionary(kv => int.Parse(kv.Key), kv => kv.Value);
         }
@@ -349,9 +433,9 @@ namespace com.clusterrr.TuyaNet
             string requestJson = JsonConvert.SerializeObject(cmd);
             requestJson = FillJson(requestJson);
             var response = await SendAsync(TuyaCommand.UPDATE_DPS, requestJson, retries, nullRetries, overrideRecvTimeout, cancellationToken);
-            if (string.IsNullOrEmpty(response.JSON))
+            if (string.IsNullOrEmpty(response.Json))
                 return new Dictionary<int, object>();
-            var root = JObject.Parse(response.JSON);
+            var root = JObject.Parse(response.Json);
             var newDps = JsonConvert.DeserializeObject<Dictionary<string, object>>(root.GetValue("dps").ToString());
             return newDps.ToDictionary(kv => int.Parse(kv.Key), kv => kv.Value);
         }
